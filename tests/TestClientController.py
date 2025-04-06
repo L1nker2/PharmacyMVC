@@ -3,6 +3,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models.client import Client
 from models.base import Base
+from models.employee import Employee
+from models.medicine import Medicine
+from models.supplier import Supplier
 from controllers.ClientController import ClientController
 from core.security import Security
 
@@ -97,4 +100,4 @@ class TestClientController(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    unittest.main()
+    unittest.main(verbosity=2)

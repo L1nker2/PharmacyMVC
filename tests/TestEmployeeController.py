@@ -3,6 +3,8 @@ from datetime import date, timedelta
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models.employee import Employee
+from models.medicine import Medicine
+from models.supplier import Supplier
 from models.base import Base
 from controllers.EmployeeController import EmployeeController
 from core.security import Security

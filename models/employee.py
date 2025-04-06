@@ -1,21 +1,22 @@
 from sqlalchemy import Column, Integer, String, Date
+from sqlalchemy.orm import relationship
 from datetime import date
 from .base import Base
 
 class Employee(Base):
-    """
-    Модель сотрудника аптеки.
-    """
     __tablename__ = 'employees'
 
-    id = Column(Integer, primary_key=True, doc="Уникальный идентификатор сотрудника")
-    FName = Column(String(50), nullable=False, doc="Имя сотрудника")
-    LName = Column(String(50), nullable=False, doc="Фамилия сотрудника")
-    Number = Column(String(20), nullable=False, doc="Контактный телефон")
-    Position = Column(String(50), nullable=False, doc="Должность")
-    Login = Column(String(50), nullable=False, doc="Логин для входа")
-    Pass = Column(String(255), nullable=False, doc="Хэш пароля")
-    DTB = Column(Date, nullable=False, doc="Дата трудоустройства (ГГГГ-ММ-ДД)")
+    id = Column(Integer, primary_key=True)
+    FName = Column(String(50), nullable=False)
+    LName = Column(String(50), nullable=False)
+    Number = Column(String(20), nullable=False)
+    Position = Column(String(50), nullable=False)
+    Login = Column(String(50), nullable=False)
+    Pass = Column(String(255), nullable=False)
+    DTB = Column(Date, nullable=False)
+
+    # Исправлено: back_populates='employee'
+    orders = relationship('Order', back_populates='employee')
 
     def get_experience(self):
         today = date.today()

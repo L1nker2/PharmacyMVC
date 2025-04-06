@@ -1,8 +1,6 @@
 from sqlalchemy import Column, Integer, String
-from sqlalchemy.ext.declarative import declarative_base
+from models.base import Base
 from sqlalchemy.orm import relationship
-
-Base = declarative_base()
 
 class Supplier(Base):
     """
@@ -15,4 +13,6 @@ class Supplier(Base):
     Adress = Column(String(255), nullable=False, doc="Юридический адрес")
     Number = Column(String(20), nullable=False, doc="Контактный телефон")
     INN = Column(String(50), nullable=False, doc="ИНН организации")
+
+    # Связь с таблицей Medicine
     medicines = relationship("Medicine", back_populates="supplier_rel")

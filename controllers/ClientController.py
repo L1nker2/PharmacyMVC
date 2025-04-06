@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session
 from models.client import Client
-from models.order import Order
 from core.security import Security
 from typing import Optional
 import decimal
@@ -60,6 +59,3 @@ class ClientController:
     def is_login_unique(self, login: str) -> bool:
         """Проверка уникальности логина"""
         return not self.db.query(Client).filter(Client.Login == login).first()
-
-    def get_client_orders(self):
-        orders = self.db.query(Order).where()
