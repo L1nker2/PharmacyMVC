@@ -15,7 +15,6 @@ class Employee(Base):
     Pass = Column(String(255), nullable=False)
     DTB = Column(Date, nullable=False)
 
-    # Исправлено: back_populates='employee'
     orders = relationship('Order', back_populates='employee')
 
     def get_experience(self):
@@ -24,3 +23,10 @@ class Employee(Base):
         if (today.month, today.day) < (self.DTB.month, self.DTB.day):
             experience -= 1
         return experience
+
+    def __iter__(self):
+        """
+        Итерирует по значениям атрибутов модели.
+        """
+        for column in self.__table__.columns:
+            yield getattr(self, column.name)

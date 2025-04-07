@@ -31,6 +31,7 @@ class TestMedicineController(unittest.TestCase):
             mname="Тестовый препарат",
             price=100.50,
             description="Тестовое описание",
+            count = 5,
             category="Тестовая категория",
             bbt="2025-01-01",
             supplier_id=1
@@ -46,6 +47,7 @@ class TestMedicineController(unittest.TestCase):
             mname="Аспирин",
             price=150.99,
             description="Обезболивающее",
+            count = 5,
             category="Таблетки",
             bbt="2025-12-31",
             supplier_id=1
@@ -103,6 +105,7 @@ class TestMedicineController(unittest.TestCase):
                 mname=name,
                 price=100,
                 description="desc",
+                count=5,
                 category=category,
                 bbt="2025-01-01",
                 supplier_id=supplier
@@ -134,6 +137,7 @@ class TestMedicineController(unittest.TestCase):
                 mname=f"Препарат {i}",
                 price=100,
                 description="desc",
+                count=5,
                 category="test",
                 bbt=exp_date.isoformat(),
                 supplier_id=1
@@ -148,6 +152,7 @@ class TestMedicineController(unittest.TestCase):
                 mname="Тест",
                 price="не число",
                 description="desc",
+                count=5,
                 category="test",
                 bbt="2025-01-01",
                 supplier_id=1
@@ -161,6 +166,7 @@ class TestMedicineController(unittest.TestCase):
                 mname="Тест",
                 price=None,  # Некорректное значение
                 description="desc",
+                count=5,
                 category="test",
                 bbt="2025-01-01",
                 supplier_id=1

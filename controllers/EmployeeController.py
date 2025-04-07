@@ -1,4 +1,5 @@
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, load_only
 from typing import Optional
 from models.employee import Employee
 from core.security import Security
@@ -71,3 +72,9 @@ class EmployeeController:
     def is_login_unique(self, login: str) -> bool:
         """Проверка уникальности логина"""
         return not self.db.query(Employee).filter(Employee.Login == login).first()
+
+    def get_all(self):
+        """Получение всех записей"""
+        return self.db.execute(select(Employee.id, Employee.FName, Employee.LName,
+                                      Employee.Number, Employee.Position, Employee.Login,
+                                      Employee.DTB)).all()

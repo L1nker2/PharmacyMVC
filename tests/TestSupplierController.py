@@ -18,6 +18,8 @@ class TestSupplierController(unittest.TestCase):
         self.engine = create_engine("mysql+mysqldb://python:python@localhost/apteka",
                                     pool_recycle=3600,
                                     echo=False)
+                                    
+        !!!ЗАПУСКАТЬ С ОСТОРОЖНОСТЬЮ - УДАЛЯЕТ ВСЕ ТАБЛИЦЫ!!!
         """
         Base.metadata.create_all(self.engine)
         self.Session = sessionmaker(bind=self.engine)

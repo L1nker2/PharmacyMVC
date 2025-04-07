@@ -12,6 +12,7 @@ class Medicine(Base):
     MName = Column(String(50), nullable=False, doc="Название лекарства")
     Price = Column(Numeric(10, 2), nullable=False, doc="Цена за единицу")
     Description = Column(String(255), nullable=False, doc="Описание препарата")
+    Count = Column(Integer, nullable=False, doc="Количество препарата")
     Category = Column(String(50), nullable=False, doc="Категория лекарства")
     BBT = Column(String(50), nullable=False, doc="Срок годности")
     Supplier = Column(Integer, ForeignKey('suppliers.id'), nullable=False, doc="ID поставщика")

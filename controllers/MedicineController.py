@@ -10,7 +10,7 @@ class MedicineController:
         self.session = session
 
     def create_medicine(self, mname: str, price: float, description: str,
-                        category: str, bbt: str, supplier_id: int) -> Medicine:
+                        count: int, category: str, bbt: str, supplier_id: int) -> Medicine:
         """
         Создание нового лекарства
         """
@@ -19,6 +19,7 @@ class MedicineController:
                 MName=mname,
                 Price=price,
                 Description=description,
+                Count=count,
                 Category=category,
                 BBT=bbt,
                 Supplier=supplier_id
