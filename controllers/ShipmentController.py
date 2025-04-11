@@ -53,6 +53,9 @@ class ShipmentController:
         shipment = self.db.get(Shipment, shipment_id)
         if not shipment:
             return None
+        shipment_items = self.db.query(ShipmentItem).filter(ShipmentItem.Shipment == shipment.id).all()
+        for shipment_item in shipment_items:
+            self.db.delete(shipment_item)
         self.db.delete(shipment)
         self.db.commit()
         return shipment

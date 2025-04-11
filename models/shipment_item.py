@@ -4,8 +4,9 @@ from sqlalchemy.orm import relationship
 
 class ShipmentItem(Base):
     __tablename__ = 'shipmentitem'
-    Shipment = Column(Integer, ForeignKey('shipments.id'), primary_key=True)
-    Medicine = Column(Integer, ForeignKey('medicines.id'), primary_key=True)
+    id = Column(Integer, primary_key=True)
+    Shipment = Column(Integer, ForeignKey('shipments.id'))
+    Medicine = Column(Integer, ForeignKey('medicines.id'))
     Quantity = Column(Integer, nullable=False)
 
     # Связи: одна позиция принадлежит одной поставке и одному медикаменту

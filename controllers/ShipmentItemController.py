@@ -41,5 +41,5 @@ class ShipmentItemController:
     def get_all(self) -> list[Type[ShipmentItem]]:
         """Возвращает список всех ShipmentItem (с ограниченным набором полей)."""
         return self.db.query(ShipmentItem).options(
-            load_only(ShipmentItem.Shipment, ShipmentItem.Medicine, ShipmentItem.Quantity)
+            load_only(ShipmentItem.id, ShipmentItem.Shipment, ShipmentItem.Medicine, ShipmentItem.Quantity)
         ).all()

@@ -1,96 +1,226 @@
 import pytest
-import sqlalchemy
+from datetime import date, datetime
+from sqlalchemy import inspect
 from controllers.ShipmentController import ShipmentController
-from controllers.OrderController import  OrderController
-from controllers.SupplierController import SupplierController
 from models.shipment import Shipment
+from models.shipment_item import ShipmentItem
+from models.supplier import Supplier
+from models.employee import Employee
+from models.medicine import Medicine
 
-def test_create_shipment_success(session):
-    # Создаем заказ, к которому будет относиться shipment
-    supplier_ctrl = SupplierController(session)
-    order_ctrl = OrderController(session)
-    supplier = supplier_ctrl.create(name="ShipSupplier", contact="555")
-    order = order_ctrl.create(supplier_id=supplier.id, date="2025-11-11")
+@pytest.fixture
+def controller(session):
+    return ShipmentController(session)
 
-    shipment_ctrl = ShipmentController(session)
-    shipment = shipment_ctrl.create(order_id=order.id, shipped_date="2025-11-12")
+def test_create_shipment(controller, session):
+    # Setup related entities
+    supplier = Supplier(id = 1, CompName = "Test Supplier", Address = "Test Address",
+                        Number = "Test Number", INN = "Test INN")
+    employee = Employee(id = 1, FName = "Test FName",
+                        LName = "Test LName", Number = "Test Number",
+                        Position = "Test Position", Login = "Test Login",
+                        Pass = "Test Pass",
+                        DTB = datetime.strptime('1999-12-31', '%Y-%m-%d').date(),
+                        Admin = False)
+    medicine = Medicine(id = 1, MName = "Test MName",
+                        Price = 100, Count = 100,
+                        Description = "Test Description",
+                        Category = "Test Category", BT = "Test BT",
+                        Supplier = 1)
+    session.add_all([supplier, employee, medicine])
+    session.commit()
+
+    # Test data
+    shipment_data = {
+        "Supplier": supplier.id,
+        "Employee": employee.id,
+        "DateReg": date.today(),
+        "Amount": 1000,
+        "Status": True
+    }
+    items = [{"medication_id": medicine.id, "quantity": 10}]
+
+    # Create shipment
+    shipment = controller.create_shipment(shipment_data, items)
+
+    # Assert shipment
+    assert shipment is not None
     assert shipment.id is not None
-    # Проверяем связь с заказом
-    ship_db = session.query(Shipment).get(shipment.id)
-    assert ship_db.order_id == order.id
-    assert ship_db.shipped_date == "2025-11-12"
+    assert shipment.Supplier == supplier.id
+    assert shipment.Employee == employee.id
+    assert shipment.Amount == 1000
 
-def test_get_shipment_by_id(session):
-    supplier_ctrl = SupplierController(session)
-    order_ctrl = OrderController(session)
-    supplier = supplier_ctrl.create(name="ShipSupplier2", contact="666")
-    order = order_ctrl.create(supplier_id=supplier.id, date="2025-10-10")
+    # Assert shipment items
+    assert len(shipment.items) == 1
+    item = shipment.items[0]
+    assert item.Medicine == medicine.id
+    assert item.Quantity == 10
+    assert shipment.get_total_quantity() == 10
 
-    shipment_ctrl = ShipmentController(session)
-    shipment = shipment_ctrl.create(order_id=order.id, shipped_date="2025-10-15")
-    fetched = shipment_ctrl.get_by_id(shipment.id)
-    assert fetched.order_id == order.id
-    assert fetched.shipped_date == "2025-10-15"
+    # Check database state
+    db_items = session.query(ShipmentItem).all()
+    assert len(db_items) == 1
 
-def test_get_shipment_not_found(session):
-    shipment_ctrl = ShipmentController(session)
-    with pytest.raises(Exception):
-        shipment_ctrl.get_by_id(4242)
+def test_get_shipment_by_id(controller, session):
+    # Create test shipment
+    supplier = Supplier(id=1, CompName="Test Supplier", Address="Test Address",
+                        Number="Test Number", INN="Test INN")
+    employee = Employee(id=1, FName="Test FName",
+                        LName="Test LName", Number="Test Number",
+                        Position="Test Position", Login="Test Login",
+                        Pass="Test Pass",
+                        DTB=datetime.strptime('1999-12-31', '%Y-%m-%d').date(),
+                        Admin = False)
 
-def test_create_shipment_missing_order(session):
-    shipment_ctrl = ShipmentController(session)
-    # Не указан обязательный order_id
-    with pytest.raises(ValueError):
-        shipment_ctrl.create(order_id=None, shipped_date="2025-01-01")
+    session.add_all([supplier, employee])
+    session.commit()
 
-def test_create_shipment_invalid_order(session):
-    shipment_ctrl = ShipmentController(session)
-    # Указан несуществующий order_id
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-        shipment_ctrl.create(order_id=9999, shipped_date="2025-02-02")
+    shipment = Shipment(
+        Supplier=supplier.id,
+        Employee=employee.id,
+        DateReg=date.today(),
+        Amount=500,
+        Status=False
+    )
+    session.add(shipment)
+    session.commit()
 
-def test_update_shipment_success(session):
-    supplier_ctrl = SupplierController(session)
-    order_ctrl = OrderController(session)
-    supplier = supplier_ctrl.create(name="ShipSupplier3", contact="777")
-    order = order_ctrl.create(supplier_id=supplier.id, date="2025-03-03")
+    # Test existing shipment
+    result = controller.get_shipment_by_id(shipment.id)
+    assert result.id == shipment.id
+    assert result.Amount == 500
 
-    shipment_ctrl = ShipmentController(session)
-    shipment = shipment_ctrl.create(order_id=order.id, shipped_date="2025-03-04")
-    # Обновляем дату отгрузки
-    updated = shipment_ctrl.update(shipment.id, shipped_date="2025-03-05")
-    assert updated.shipped_date == "2025-03-05"
-    ship_db = session.query(Shipment).get(shipment.id)
-    assert ship_db.shipped_date == "2025-03-05"
+    # Test non-existent shipment
+    assert controller.get_shipment_by_id(999) is None
 
-def test_update_shipment_not_found(session):
-    shipment_ctrl = ShipmentController(session)
-    with pytest.raises(Exception):
-        shipment_ctrl.update(3030, shipped_date="2030-01-01")
+def test_update_shipment(controller, session):
+    # Create test shipment
+    supplier = Supplier(id=1, CompName="Test Supplier", Address="Test Address",
+                        Number="Test Number", INN="Test INN")
+    employee = Employee(id=1, FName="Test FName",
+                        LName="Test LName", Number="Test Number",
+                        Position="Test Position", Login="Test Login",
+                        Pass="Test Pass",
+                        DTB=datetime.strptime('1999-12-31', '%Y-%m-%d').date(),
+                        Admin = False)
+    session.add_all([supplier, employee])
+    session.commit()
 
-def test_update_shipment_invalid_order(session):
-    supplier_ctrl = SupplierController(session)
-    order_ctrl = OrderController(session)
-    supplier = supplier_ctrl.create(name="TempSup", contact="888")
-    order = order_ctrl.create(supplier_id=supplier.id, date="2024-08-08")
+    shipment = Shipment(
+        Supplier=supplier.id,
+        Employee=employee.id,
+        DateReg=date.today(),
+        Amount=200,
+        Status=False
+    )
+    session.add(shipment)
+    session.commit()
 
-    shipment_ctrl = ShipmentController(session)
-    shipment = shipment_ctrl.create(order_id=order.id, shipped_date="2024-08-09")
-    # Попытка перепривязать shipment к несуществующему Order
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-        shipment_ctrl.update(shipment.id, order_id=123456)
+    # Update data
+    update_data = {"Amount": 300, "Status": True}
+    updated = controller.update_shipment(shipment.id, update_data)
 
-def test_delete_shipment_success(session):
-    supplier_ctrl = SupplierController(session)
-    order_ctrl = OrderController(session)
-    supplier = supplier_ctrl.create(name="DelSup2", contact="999")
-    order = order_ctrl.create(supplier_id=supplier.id, date="2025-04-01")
-    shipment_ctrl = ShipmentController(session)
-    shipment = shipment_ctrl.create(order_id=order.id, shipped_date="2025-04-02")
-    shipment_ctrl.delete(shipment.id)
-    assert session.query(Shipment).get(shipment.id) is None
+    # Assert updates
+    assert updated.Amount == 300
+    assert updated.Status is True
+    db_shipment = session.get(Shipment, shipment.id)
+    assert db_shipment.Amount == 300
 
-def test_delete_shipment_not_found(session):
-    shipment_ctrl = ShipmentController(session)
-    with pytest.raises(Exception):
-        shipment_ctrl.delete(7777)
+    # Test non-existent shipment
+    assert controller.update_shipment(999, {"Amount": 100}) is None
+
+def test_delete_shipment(controller, session):
+    # Create test shipment with item
+    supplier = Supplier(id=1, CompName="Test Supplier", Address="Test Address",
+                        Number="Test Number", INN="Test INN")
+    employee = Employee(id=1, FName="Test FName",
+                        LName="Test LName", Number="Test Number",
+                        Position="Test Position", Login="Test Login",
+                        Pass="Test Pass",
+                        DTB=datetime.strptime('1999-12-31', '%Y-%m-%d').date(),
+                        Admin = False)
+    medicine = Medicine(id=1, MName="Test MName",
+                        Price=100, Count=100,
+                        Description="Test Description",
+                        Category="Test Category", BT="Test BT",
+                        Supplier=1)
+    session.add_all([supplier, employee, medicine])
+    session.commit()
+
+    shipment = Shipment(
+        Supplier=supplier.id,
+        Employee=employee.id,
+        DateReg=date.today(),
+        Amount=100,
+        Status=True
+    )
+    session.add(shipment)
+    session.flush()  # Get shipment ID
+
+    item = ShipmentItem(Shipment=shipment.id, Medicine=medicine.id, Quantity=5)
+    session.add(item)
+    session.commit()
+
+    # Delete shipment
+    deleted = controller.delete_shipment(shipment.id)
+    assert deleted.id == shipment.id
+
+    # Verify deletion
+    assert session.get(Shipment, shipment.id) is None
+    # Verify items remain
+    # При удалении поставки, так же удаляются связанные записи в ShipmentItems
+    assert session.query(ShipmentItem).count() == 0
+
+def test_get_all_shipments(controller, session):
+    # Create test data
+    supplier = Supplier(id=1, CompName="Test Supplier", Address="Test Address",
+                        Number="Test Number", INN="Test INN")
+    employee = Employee(id=1, FName="Test FName",
+                        LName="Test LName", Number="Test Number",
+                        Position="Test Position", Login="Test Login",
+                        Pass="Test Pass",
+                        DTB=datetime.strptime('1999-12-31', '%Y-%m-%d').date(),
+                        Admin = False)
+    session.add_all([supplier, employee])
+    session.commit()
+
+    shipment1 = Shipment(
+        Supplier=supplier.id,
+        Employee=employee.id,
+        DateReg=date(2023, 1, 1),
+        Amount=100,
+        Status=True
+    )
+    shipment2 = Shipment(
+        Supplier=supplier.id,
+        Employee=employee.id,
+        DateReg=date(2023, 1, 2),
+        Amount=200,
+        Status=False
+    )
+    session.add_all([shipment1, shipment2])
+    session.commit()
+
+    # Test get all
+    shipments = controller.get_all()
+    assert len(shipments) == 2
+
+    # Verify loaded fields
+    for shipment in shipments:
+        assert hasattr(shipment, "id")
+        assert hasattr(shipment, "Supplier")
+        assert hasattr(shipment, "DateReg")
+
+        # Проверяем НЕзагруженные поля
+        insp = inspect(shipment)
+        unloaded = insp.unloaded
+
+        # Поля, которые НЕ должны быть загружены
+        assert "Amount" in unloaded
+        assert "Status" in unloaded
+        assert "Employee" in unloaded  # Если Employee тоже не указан в load_only
+
+        # Поля, которые ДОЛЖНЫ быть загружены
+        assert "id" not in unloaded
+        assert "Supplier" not in unloaded
+        assert "DateReg" not in unloaded
