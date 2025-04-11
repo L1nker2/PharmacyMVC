@@ -16,36 +16,32 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 --
--- Table structure for table `orders`
+-- Table structure for table `clients`
 --
 CREATE DATABASE IF NOT EXISTS `apteka`;
 USE `apteka`;
-DROP TABLE IF EXISTS `orders`;
+
+DROP TABLE IF EXISTS `shipment_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `orders` (
-  `id` int AUTO_INCREMENT,
-  `DateReg` date NOT NULL,
-  `Amount` decimal(10,2) NOT NULL,
-  `Status` varchar(20) NOT NULL,
-  `Employee` int NOT NULL,
-  `Medicine` int NOT NULL,
-  PRIMARY KEY (`id`),
-  KEY `Employee` (`Employee`),
-  KEY `Medicine` (`Medicine`),
-  CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`Employee`) REFERENCES `employees` (`id`),
-  CONSTRAINT `orders_ibfk_3` FOREIGN KEY (`Medicine`) REFERENCES `medicines` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+CREATE TABLE shipment_item (
+    shipment_id INT NOT NULL,
+    medicine_id INT NOT NULL,
+    quantity INT NOT NULL,
+    PRIMARY KEY (shipment_id, medication_id),
+    CONSTRAINT fk_shipment
+      FOREIGN KEY (shipment_id) REFERENCES shipments(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE,
+    CONSTRAINT fk_medication
+      FOREIGN KEY (medication_id) REFERENCES medications(id)
+      ON DELETE CASCADE
+      ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
--- Dumping data for table `orders`
+-- Dumping data for table `clients`
 --
-
-LOCK TABLES `orders` WRITE;
-/*!40000 ALTER TABLE `orders` DISABLE KEYS */;
-/*!40000 ALTER TABLE `orders` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

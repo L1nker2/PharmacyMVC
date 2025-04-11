@@ -1,103 +1,66 @@
-from sqlalchemy.orm import Session
-from sqlalchemy.exc import SQLAlchemyError
-from sqlalchemy import select
+import sqlalchemy
+from sqlalchemy.orm import Session, load_only
+from typing import Optional, Type
 from models.medicine import Medicine
-from typing import List, Optional
 
 
 class MedicineController:
-    def __init__(self, session: Session):
-        self.session = session
+    def __init__(self, db_session: Session):
+        self.db = db_session
 
-    def create_medicine(self, mname: str, price: float, description: str,
-                        count: int, category: str, bbt: str, supplier_id: int) -> Medicine:
-        """
-        Создание нового лекарства
-        """
-        try:
-            medicine = Medicine(
-                MName=mname,
-                Price=price,
-                Description=description,
-                Count=count,
-                Category=category,
-                BBT=bbt,
-                Supplier=supplier_id
-            )
-            self.session.add(medicine)
-            self.session.commit()
-            return medicine
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            raise ValueError(f"Ошибка создания лекарства: {str(e)}")
+    def create_medicine(self, medicine_data: dict) -> Medicine:
+        """Создает новый медикамент."""
+        if medicine_data['MName'] == '' or medicine_data['Price'] == ''\
+            or medicine_data['Count'] == '' or medicine_data['Description'] == ''\
+            or medicine_data['Category'] == '' or medicine_data['BT'] == '' or medicine_data['Supplier'] == '':
+            raise ValueError("Fill in all fields")
+        if medicine_data['Price'] < 0 or medicine_data['Count'] < 0:
+            raise ValueError("The value cannot be less than zero.")
+        if not self.is_name_unique(medicine_data['MName']):
+            raise sqlalchemy.exc.IntegrityError(statement="UNIQUE constraint failed", params="UNIQUE constraint failed",
+                                                orig="UNIQUE constraint failed")
+        medicine = Medicine(**medicine_data)
+        self.db.add(medicine)
+        self.db.commit()
+        self.db.refresh(medicine)
+        return medicine
 
-    def get_medicine_by_id(self, medicine_id: int) -> Optional[Medicine]:
-        """
-        Получение лекарства по ID
-        """
-        try:
-            return self.session.get(Medicine, medicine_id)
-        except SQLAlchemyError as e:
-            raise ValueError(f"Ошибка получения лекарства: {str(e)}")
+    def get_medicine_by_id(self, medicine_id: int) -> Type[Medicine]:
+        """Возвращает медикамент по ID или None, если не найден."""
+        medicine = self.db.get(Medicine, medicine_id)
+        if medicine is None:
+            raise ValueError("Medicine not found")
+        else: return medicine
 
-    def update_medicine(self, medicine_id: int, **kwargs) -> Medicine:
-        """
-        Обновление данных лекарства
-        """
-        try:
-            medicine = self.session.get(Medicine, medicine_id)
-            if not medicine:
-                raise ValueError("Лекарство не найдено")
+    def update_medicine(self, medicine_id: int, update_data: dict) -> Type[Medicine] | None:
+        """Обновляет данные медикамента по ID. Возвращает обновленный объект или None."""
+        if update_data['Price'] < 0 or update_data['Count'] < 0:
+            raise ValueError("The value cannot be less than zero.")
+        medicine = self.db.get(Medicine, medicine_id)
+        if not medicine:
+            raise ValueError("Medicine not found")
+        for field, value in update_data.items():
+            setattr(medicine, field, value)
+        self.db.commit()
+        self.db.refresh(medicine)
+        return medicine
 
-            for key, value in kwargs.items():
-                if hasattr(medicine, key):
-                    setattr(medicine, key, value)
+    def delete_medicine(self, medicine_id: int) -> Type[Medicine] | None:
+        """Удаляет медикамент по ID. Возвращает удалённый объект или None."""
+        medicine = self.db.get(Medicine, medicine_id)
+        if not medicine:
+            raise ValueError("Medicine not found")
+        self.db.delete(medicine)
+        self.db.commit()
+        return medicine
 
-            self.session.commit()
-            return medicine
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            raise ValueError(f"Ошибка обновления лекарства: {str(e)}")
+    def get_all(self) -> list[Type[Medicine]]:
+        """Возвращает список всех медикаментов (с ограниченным набором полей)."""
+        return self.db.query(Medicine).options(
+            load_only(Medicine.id, Medicine.MName, Medicine.Price)
+        ).all()
 
-    def delete_medicine(self, medicine_id: int) -> bool:
-        """
-        Удаление лекарства
-        """
-        try:
-            medicine = self.session.get(Medicine, medicine_id)
-            if not medicine:
-                return False
-
-            self.session.delete(medicine)
-            self.session.commit()
-            return True
-        except SQLAlchemyError as e:
-            self.session.rollback()
-            raise ValueError(f"Ошибка удаления лекарства: {str(e)}")
-
-    def get_all_medicines(self, category: str = None, supplier_id: int = None) -> List[Medicine]:
-        """
-        Получение списка лекарств с опциональной фильтрацией
-        """
-        try:
-            query = select(Medicine)
-
-            if category:
-                query = query.where(Medicine.Category == category)
-
-            if supplier_id:
-                query = query.where(Medicine.Supplier == supplier_id)
-
-            return list(self.session.scalars(query).all())
-        except SQLAlchemyError as e:
-            raise ValueError(f"Ошибка получения списка лекарств: {str(e)}")
-
-    def get_medicines_expiring_after(self, expiration_date: str) -> List[Medicine]:
-        """
-        Получение лекарств с сроком годности после указанной даты
-        """
-        try:
-            query = select(Medicine).where(Medicine.BBT > expiration_date)
-            return list(self.session.scalars(query).all())
-        except SQLAlchemyError as e:
-            raise ValueError(f"Ошибка фильтрации по сроку годности: {str(e)}")
+    def is_name_unique(self, name: str) -> bool:
+        """Проверяет, уникален ли указанный логин (True, если такого логина нет в базе)."""
+        existing = self.db.query(Medicine).filter(Medicine.MName == name).first()
+        return existing is None

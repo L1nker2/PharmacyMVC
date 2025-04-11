@@ -1,18 +1,19 @@
 from sqlalchemy import Column, Integer, String
-from models.base import Base
 from sqlalchemy.orm import relationship
+from .base import Base
 
 class Supplier(Base):
-    """
-    Модель поставщика лекарств.
-    """
     __tablename__ = 'suppliers'
+    id = Column(Integer, primary_key=True)
+    CompName = Column(String(100), nullable=False)
+    Address = Column(String(100), nullable=False)
+    Number = Column(String(20), nullable=False)
+    INN = Column(String(20), nullable=False)
 
-    id = Column(Integer, primary_key=True, nullable=False, doc="Уникальный ID поставщика")
-    CompName = Column(String(100), nullable=False, doc="Название компании")
-    Adress = Column(String(255), nullable=False, doc="Юридический адрес")
-    Number = Column(String(20), nullable=False, doc="Контактный телефон")
-    INN = Column(String(50), nullable=False, doc="ИНН организации")
+    # Связи: один поставщик -> много поставок и много медикаментов
+    shipments = relationship('Shipment', back_populates='supplier')
+    medicines = relationship('Medicine', back_populates='supplier')
 
-    # Связь с таблицей Medicine
-    medicines = relationship("Medicine", back_populates="supplier_rel")
+    def __iter__(self):
+        for column in self.__table__.columns:
+            yield getattr(self, column.name)

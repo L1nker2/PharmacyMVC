@@ -1,6 +1,5 @@
 import logging
 from datetime import date
-
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 from sqlalchemy import create_engine
@@ -15,12 +14,11 @@ from models.medicine import Medicine
 from models.supplier import Supplier
 from models.client import Client
 from models.order import Order
-from models.base import Base
+from models.base import Base, engine
 from views.customUI.LoginFrame import AuthFrame
 from views.ClientView import UserFrame
 
 
-engine = create_engine("mysql+mysqldb://python:python@localhost/apteka")
 Session = sessionmaker(bind=engine)
 session = Session()
 client_controller=ClientController(session)

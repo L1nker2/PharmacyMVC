@@ -21,29 +21,19 @@
 CREATE DATABASE IF NOT EXISTS `apteka`;
 USE `apteka`;
 
-DROP TABLE IF EXISTS `clients`;
+DROP TABLE IF EXISTS `shipments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `clients` (
-  `id` int AUTO_INCREMENT,
-  `FName` varchar(50) NOT NULL,
-  `LName` varchar(50) NOT NULL,
-  `Number` varchar(20) NOT NULL,
-  `Login` varchar(50) NOT NULL,
-  `Pass` varchar(255) NOT NULL,
-  `Balance` decimal(10,2) NOT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
+CREATE TABLE shipments (
+    id INT NOT NULL AUTO_INCREMENT,
+    shipment_date DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    supplier INT NOT NULL,
+    PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
 -- Dumping data for table `clients`
 --
-
-LOCK TABLES `clients` WRITE;
-/*!40000 ALTER TABLE `clients` DISABLE KEYS */;
-/*!40000 ALTER TABLE `clients` ENABLE KEYS */;
-UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;

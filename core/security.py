@@ -31,5 +31,6 @@ class Security:
                 100000
             )
             return new_key == key
-        except:
+        except Exception as e:
+            print(e)
             return False
