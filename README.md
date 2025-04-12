@@ -65,3 +65,9 @@
 для выборки нужно будет получить айди поставки
 из промежуточной таблицы получить все записи указывающие на эту поставку
 получить все препараты и их количество из этой таблицы
+
+
+<details>
+  <summary>Схема базы данных</summary>
+  <iframe width="100%" height="500px" style="box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16); border-radius:15px;" allowtransparency="true" allowfullscreen="true" scrolling="no" title="Embedded DrawSQL IFrame" frameborder="0" src="https://drawsql.app/teams/test-4699/diagrams/test/embed"></iframe>
+</details>
