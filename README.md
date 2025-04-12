@@ -67,7 +67,6 @@
 получить все препараты и их количество из этой таблицы
 
 
-<details>
-  <summary>Схема базы данных</summary>
-  ![image](https://github.com/user-attachments/assets/295c9613-a280-4f80-880f-a900f9e8c7e9)
-</details>
+# Схема базы данных
+![image](https://github.com/user-attachments/assets/295c9613-a280-4f80-880f-a900f9e8c7e9)
+
