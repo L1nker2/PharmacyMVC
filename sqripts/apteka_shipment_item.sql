@@ -25,10 +25,11 @@ DROP TABLE IF EXISTS `shipment_item`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE shipment_item (
+    id INT AUTO_INCREMENT ,
     shipment_id INT NOT NULL,
     medicine_id INT NOT NULL,
     quantity INT NOT NULL,
-    PRIMARY KEY (shipment_id, medication_id),
+    PRIMARY KEY (`id`),
     CONSTRAINT fk_shipment
       FOREIGN KEY (shipment_id) REFERENCES shipments(id)
       ON DELETE CASCADE

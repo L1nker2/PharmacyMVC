@@ -1,7 +1,7 @@
 import sqlalchemy
-from MySQLdb import IntegrityError
+from sqlalchemy import Row
 from sqlalchemy.orm import Session, load_only
-from typing import  Optional, Type
+from typing import Optional, Type, Any
 from models.employee import Employee
 from core.security import Security
 
@@ -21,10 +21,10 @@ class EmployeeController:
 
         if not self.is_login_unique(employee_data['Login']):
             raise sqlalchemy.exc.IntegrityError(statement="UNIQUE constraint failed", params="UNIQUE constraint failed", orig="UNIQUE constraint failed")
-        password_plain = employee_data.get("password")
+        password_plain = employee_data.get("Pass")
         if password_plain is not None:
             # Заменяем открытый пароль на его хеш
-            employee_data["password"] = Security.get_password_hash(password_plain)
+            employee_data["Pass"] = Security.get_password_hash(password_plain)
         # Создаем объект модели Employee
         employee = Employee(**employee_data)
         self.db.add(employee)
@@ -70,12 +70,23 @@ class EmployeeController:
         self.db.commit()
         return employee
 
-    def get_all(self) -> list[Type[Employee]]:
+    def get_all(self) -> list[Row[tuple[Any, Any, Any, Any, Any, Any, Any, Any]]]:
         """Возвращает список всех сотрудников (ограниченный набор полей для эффективности)."""
         # Используем load_only, чтобы загрузить только нужные поля (например, id, name, login)
-        return self.db.query(Employee).options(
-            load_only(Employee.id, Employee.FName, Employee.LName, Employee.Login)
-        ).all()
+        employees = (
+            self.db.query(
+                Employee.id,
+                Employee.FName,
+                Employee.LName,
+                Employee.Number,
+                Employee.Login,
+                Employee.DTB,
+                Employee.Position,
+                Employee.Admin,
+            )
+            .all()
+        )
+        return employees
         # Примечание: load_only загрузит только указанные столбцы и первичный ключ
 
     def authenticate(self, login: str, password: str) -> Type[Employee] | None:
