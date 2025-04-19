@@ -1,9 +1,12 @@
+from typing import Optional, Type, Any
+
 import sqlalchemy
 from sqlalchemy import Row
-from sqlalchemy.orm import Session, load_only
-from typing import Optional, Type, Any
-from models.employee import Employee
+from sqlalchemy.orm import Session
+
 from core.security import Security
+from models.employee import Employee
+
 
 class EmployeeController:
     def __init__(self, db_session: Session):
@@ -48,12 +51,12 @@ class EmployeeController:
 
         if update_data['FName'] == '' or update_data['LName'] == '' \
             or update_data['Number'] == '' or update_data['Position'] == ''\
-            or update_data['Login'] == '' or update_data['Pass'] == '' \
+            or update_data['Login'] == '' \
             or update_data['DTB'] == '' or update_data['Admin'] == '':
             raise ValueError("Fill in all fields")
         # Если в обновлении присутствует новый пароль, захешировать его
-        if "password" in update_data:
-            update_data["password"] = Security.get_password_hash(update_data["password"])
+        if "Pass" in update_data:
+            update_data["Pass"] = Security.get_password_hash(update_data["Pass"])
         # Обновляем указанные поля
         for field, value in update_data.items():
             setattr(employee, field, value)
@@ -80,6 +83,7 @@ class EmployeeController:
                 Employee.LName,
                 Employee.Number,
                 Employee.Login,
+                Employee.Pass,
                 Employee.DTB,
                 Employee.Position,
                 Employee.Admin,
