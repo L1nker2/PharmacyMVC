@@ -1,5 +1,4 @@
 from typing import Optional, Type, Any
-
 import sqlalchemy
 from sqlalchemy import Row
 from sqlalchemy.orm import Session

@@ -9,9 +9,9 @@ class BaseModel:
         self.__table__ = None
         self.id = None
 
-    def __repr__(self):
-        """Универсальный __repr__ для всех моделей"""
-        return f"<{self.__class__.__name__}(id={self.id})>"
+    #def __repr__(self):
+    #    """Универсальный __repr__ для всех моделей"""
+    #    return f"<{self.__class__.__name__}(id={self.id})>"
 
     def to_dict(self):
         """Конвертация объекта в словарь"""

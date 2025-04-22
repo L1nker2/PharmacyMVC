@@ -1,10 +1,10 @@
 import sys
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QDialog, QWidget,
-    QLineEdit, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
     QTabWidget, QTableView, QMessageBox, QCheckBox,
-    QFormLayout, QComboBox, QDateEdit, QSizePolicy,
-    QAbstractItemView
+    QFormLayout, QDateEdit, QSizePolicy,
+    QAbstractItemView, QComboBox
 )
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QRegExp, QDate
 from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem
@@ -15,9 +15,10 @@ from controllers.SupplierController import SupplierController
 from controllers.ShipmentController import ShipmentController
 from controllers.ShipmentItemController import ShipmentItemController
 from models.base import session
+from models.base import BaseModel
 from core.security import Security
 
-
+#region LoginDialog
 # noinspection PyUnresolvedReferences
 class LoginDialog(QDialog):
     def __init__(self, employee_ctrl):
@@ -68,8 +69,9 @@ class LoginDialog(QDialog):
     def open_register(self):
         dlg = RegisterDialog(self.employee_ctrl)
         dlg.exec_()
+#endregion
 
-
+#region RegisterDialog
 # noinspection PyUnresolvedReferences
 class RegisterDialog(QDialog):
     def __init__(self, employee_ctrl):
@@ -103,7 +105,7 @@ class RegisterDialog(QDialog):
                 QLineEdit.Normal if s == Qt.Checked else QLineEdit.Password
             )
         )
-        self.admin_cb = QCheckBox("Администратор")
+        #self.admin_cb = QCheckBox("Администратор")
 
         register_btn = QPushButton("Зарегистрироваться")
         register_btn.clicked.connect(self.handle_register)
@@ -117,7 +119,7 @@ class RegisterDialog(QDialog):
         form.addRow("Логин:", self.login_input)
         form.addRow("Пароль:", self.password_input)
         form.addRow(self.show_pass_cb)
-        form.addRow(self.admin_cb)
+        #form.addRow(self.admin_cb)
 
         layout = QVBoxLayout()
         layout.addLayout(form)
@@ -133,7 +135,7 @@ class RegisterDialog(QDialog):
             'DTB': self.dtb_input.date().toString("yyyy-MM-dd"),
             'Login': self.login_input.text(),
             'Pass': self.password_input.text(),
-            'Admin': self.admin_cb.isChecked()
+            'Admin': False
         }
         try:
             self.employee_ctrl.create_employee(data)
@@ -141,18 +143,18 @@ class RegisterDialog(QDialog):
             self.accept()
         except Exception as e:
             QMessageBox.critical(self, "Ошибка", str(e))
+#endregion
 
-
+#region EditEmployee
 # noinspection PyUnresolvedReferences
 class EmployeeEditRecordDialog(QDialog):
-    def __init__(self, data, title, controller, is_edit=True):
+    def __init__(self, data, title, controller, ):
         super().__init__()
 
         self.setWindowTitle(title)
         self.setMinimumSize(400, 350)
         self.ctrl = controller
         self.employee = self.ctrl.get_employee_by_id(data[0])
-        self.is_edit = is_edit
         self.data = data or []  # Защита от None
         self.record_id = data[0] if data and len(data) > 0 else None  # Сохраняем ID записи
 
@@ -222,8 +224,9 @@ class EmployeeEditRecordDialog(QDialog):
     def toggle_password(self, state):
         mode = QLineEdit.Normal if state == Qt.Checked else QLineEdit.Password
         self.password_input.setEchoMode(mode)
+#endregion
 
-
+#region AddEmployee
 # noinspection PyUnresolvedReferences
 class EmployeeAddRecordDialog(QDialog):
     def __init__(self, title, controller):
@@ -292,6 +295,169 @@ class EmployeeAddRecordDialog(QDialog):
             QMessageBox.critical(self, title="Ошибка", text=f"При добавлении произошла ошибка:\n{e}")
             pass
         self.accept()
+#endregion
+
+#region EditSupplier
+# noinspection PyUnresolvedReferences
+class SupplierEditRecordDialog(QDialog):
+    def __init__(self, data, title, controller, ):
+        super().__init__()
+
+        self.setWindowTitle(title)
+        self.setMinimumSize(400, 350)
+        self.ctrl = controller
+        self.supplier = self.ctrl.get_supplier_by_id(data[0])
+        self.data = data or []  # Защита от None
+        self.record_id = data[0] if data and len(data) > 0 else None  # Сохраняем ID записи
+
+        layout = QVBoxLayout()
+        form = QFormLayout()
+
+        # Создаем поля формы
+        self.compname_input = QLineEdit(self.supplier.CompName)
+        self.adress_input = QLineEdit(self.supplier.Address)
+        self.number_input = QLineEdit(self.supplier.Number)
+        self.number_input.setInputMask("00000000000")
+        self.inn_input = QLineEdit(self.supplier.INN)
+
+        # Добавляем поля в форму
+        form.addRow("Название:", self.compname_input)
+        form.addRow("Адресс:", self.adress_input)
+        form.addRow("Телефон:", self.number_input)
+        form.addRow("Инн:", self.inn_input)
+
+        save_btn = QPushButton("Сохранить")
+        save_btn.clicked.connect(self.save_data)
+
+        layout.addLayout(form)
+        layout.addWidget(save_btn)
+        self.setLayout(layout)
+
+    def save_data(self):
+        """Собирает данные из формы и закрывает диалог"""
+        try:
+            self.result_data = {
+                'id': self.record_id,  # Добавляем ID записи
+                'CompName': self.compname_input.text(),
+                'Address': self.adress_input.text(),
+                'Number': self.number_input.text(),
+                'INN': self.inn_input.text(),
+            }
+            self.ctrl.update_supplier(self.record_id, self.result_data)
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self, title="Ошибка", text=f"При изменении произошла ошибка:\n{e}")
+        self.accept()
+#endregion
+
+#region AddSupplier
+# noinspection PyUnresolvedReferences
+class SupplierAddRecordDialog(QDialog):
+    def __init__(self, title, controller):
+        super().__init__()
+
+        self.setWindowTitle(title)
+        self.setMinimumSize(400, 350)
+        self.ctrl = controller
+
+        layout = QVBoxLayout()
+        form = QFormLayout()
+
+        # Создаем поля формы
+        self.compname_input = QLineEdit()
+        self.adress_input = QLineEdit()
+        self.number_input = QLineEdit()
+        self.number_input.setInputMask("00000000000")
+        self.inn_input = QLineEdit()
+
+        # Добавляем поля в форму
+        form.addRow("Название:", self.compname_input)
+        form.addRow("Адресс:", self.adress_input)
+        form.addRow("Телефон:", self.number_input)
+        form.addRow("Инн:", self.inn_input)
+
+        save_btn = QPushButton("Сохранить")
+        save_btn.clicked.connect(self.save_data)
+
+        layout.addLayout(form)
+        layout.addWidget(save_btn)
+        self.setLayout(layout)
+
+    def save_data(self):
+        """Собирает данные из формы и закрывает диалог"""
+        try:
+            self.result_data = {
+                'CompName': self.compname_input.text(),
+                'Address': self.adress_input.text(),
+                'Number': self.number_input.text(),
+                'INN': self.inn_input.text(),
+            }
+            self.ctrl.create_supplier(self.result_data)
+        except Exception as e:
+            print(e)
+            QMessageBox.critical(self, title="Ошибка", text=f"При изменении произошла ошибка:\n{e}")
+        self.accept()
+#endregion
+
+#region AddShipment
+# noinspection PyUnresolvedReferences
+class ShipmentAddRecordDialog(QDialog):
+    def __init__(self, title, controller):
+        super().__init__()
+        self.controller = controller
+
+        self.setWindowTitle(title)
+        self.setMinimumSize(400, 350)
+
+        # Основной layout
+        layout = QVBoxLayout()
+        form_layout = QFormLayout()
+
+        # 1. Выпадающий список поставщиков
+        self.supplier_combo = QComboBox()
+        suppliers = self.controller.get_all_suppliers()
+        for supplier in suppliers:
+            self.supplier_combo.addItem(supplier.CompName, supplier.id)
+        form_layout.addRow("Поставщик:", self.supplier_combo)
+
+        # 2. Выпадающий список сотрудников
+        self.employee_combo = QComboBox()
+        employees = self.controller.get_all_employees()
+        for employee in employees:
+            self.employee_combo.addItem(f"{employee.LName} {employee.FName}", employee.id)
+        form_layout.addRow("Сотрудник:", self.employee_combo)
+
+        # 3. Поля даты и статуса
+        self.date_edit = QDateEdit(QDate.currentDate())
+        self.date_edit.setCalendarPopup(True)
+        form_layout.addRow("Дата поставки:", self.date_edit)
+
+        self.status_check = QCheckBox("Активна")
+        self.status_check.setChecked(True)
+        form_layout.addRow("Статус:", self.status_check)
+
+        # 4. Кнопка сохранения
+        self.save_btn = QPushButton("Сохранить поставку")
+        self.save_btn.clicked.connect(self.save_shipment)
+
+        # Сборка интерфейса
+        layout.addLayout(form_layout)
+        layout.addWidget(self.save_btn)
+        self.setLayout(layout)
+        self.setWindowTitle("Новая поставка")
+
+    def save_shipment(self):
+        data={
+            "DateReg": self.date_edit.date().toPyDate(),
+            "Status": self.status_check.isChecked(),
+            "Supplier": self.supplier_combo.currentData(),
+            "Employee": self.employee_combo.currentData(),
+            "Price": 0  # Будет рассчитано автоматически в контроллере
+        }
+        print(data)
+        items = 0
+        self.accept()
+#endregion
 
 
 # noinspection PyUnresolvedReferences
@@ -336,17 +502,10 @@ class MainWindow(QMainWindow):
 
         tabs.addTab(self.create_table_tab(
             self.controllers['shipment'],
-            ['id', 'Supplier', 'DateReg', 'Amount', 'Status', 'Employee'],
+            ['id', 'Supplier', 'DateReg', 'Price', 'Status', 'Employee'],
             "Поставки",
             user.Admin
         ), "Поставки")
-
-        tabs.addTab(self.create_table_tab(
-            self.controllers['shipmentitem'],
-            ['id', 'Shipment', 'Medicine', 'Quantity'],
-            "Позиции поставок",
-            user.Admin
-        ), "Позиции поставок")
 
         self.setCentralWidget(tabs)
 
@@ -378,7 +537,36 @@ class MainWindow(QMainWindow):
                                      self.user.Admin
                                  ), "Лекарства")
 
-        # Аналогично для остальных вкладок...
+        elif title == "Заказы":
+            tab_widget.removeTab(current_idx)
+            tab_widget.insertTab(current_idx,
+                                 self.create_table_tab(
+                                    self.controllers['order'],
+                                    ['id', 'DateReg', 'Amount', 'Status', 'Employee', 'Medicine'],
+                                    "Заказы",
+                                    user.Admin
+                                ), "Заказы")
+
+        elif title == "Поставщики":
+            tab_widget.removeTab(current_idx)
+            tab_widget.insertTab(current_idx,
+                                 self.create_table_tab(
+                                     self.controllers['supplier'],
+                                     ['id', 'CompName', 'Address', 'Number', 'INN'],
+                                     "Поставщики",
+                                     user.Admin
+                                 ), "Поставщики")
+
+        elif title == "Поставки":
+            tab_widget.removeTab(current_idx)
+            tab_widget.insertTab(current_idx,
+                                 self.create_table_tab(
+                                     self.controllers['shipment'],
+                                     ['id', 'Supplier', 'DateReg', 'Price', 'Status', 'Employee'],
+                                     "Поставки",
+                                     user.Admin
+                                 ), "Поставки")
+
 
         tab_widget.setCurrentIndex(current_idx)
 
@@ -397,7 +585,7 @@ class MainWindow(QMainWindow):
             'Number': 'Телефон', 'Login': 'Логин', 'DTB': 'Дата рождения', 'Admin': 'Админ',
             'MName': 'Название', 'Price': 'Цена', 'Count': 'Остаток', 'Description': 'Описание',
             'Category': 'Категория', 'BT': 'BT', 'Supplier': 'Поставщик',
-            'DateReg': 'Дата', 'Amount': 'Количество', 'Status': 'Статус',
+            'DateReg': 'Дата', 'Status': 'Статус',
             'Employee': 'Сотрудник', 'Medicine': 'Лекарство',
             'CompName': 'Компания', 'Address': 'Адрес', 'INN': 'ИНН',
             'Shipment': 'Поставка', 'Quantity': 'Количество'
@@ -409,7 +597,10 @@ class MainWindow(QMainWindow):
         for row in rows:
             items = []
             for f in fields:
-                val = getattr(row, f) if hasattr(row, f) else row[fields.index(f)]
+                if not hasattr(row, f):
+                    print(f"Предупреждение: атрибут {f} не найден в объекте Shipment")
+                # Получаем значение атрибута
+                val = getattr(row, f)
                 items.append(QStandardItem(str(val)))
             model.appendRow(items)
         proxy = QSortFilterProxyModel()
@@ -476,9 +667,16 @@ class MainWindow(QMainWindow):
         elif title == "Лекарства":
             pass
             #dlg = AddRecordDialog("Добавить лекарство")
-        else:
+        elif title == "Заказы":
             pass
-            #dlg = AddRecordDialog(f"Добавить запись в {title}")
+        elif title == "Поставщики":
+            dlg = SupplierAddRecordDialog(title="Добавить поставщика", controller=self.controllers['supplier'])
+            if dlg.exec_() == QDialog.Accepted:
+                self.refresh_current_tab()
+        elif title == "Поставки":
+            dlg = ShipmentAddRecordDialog(title="Добавить поставку", controller=self.controllers['shipment'])
+            if dlg.exec_() == QDialog.Accepted:
+                self.refresh_current_tab()
 
     def handle_edit(self, title, data):
         if not data:
@@ -493,9 +691,16 @@ class MainWindow(QMainWindow):
         elif title == "Лекарства":
             pass
             #dlg = EditRecordDialog(test_data, "Редактировать лекарство", controller=self.controllers['employee'])
-        else:
+        elif title == "Заказы":
             pass
             #dlg = EditRecordDialog(test_data, f"Редактировать запись в {title}", controller=self.controllers['employee'])
+        elif title == "Поставщики":
+            dlg = SupplierEditRecordDialog(title="Редактировать поставщика", data=data,
+                                           controller = self.controllers['supplier'])
+            if dlg.exec_() == QDialog.Accepted:
+                self.refresh_current_tab()
+        elif title == "Поставки":
+            pass
 
     def handle_delete(self, title, data):
         if not data:
@@ -506,7 +711,8 @@ class MainWindow(QMainWindow):
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Question)
         msg.setWindowTitle("Подтверждение удаления")
-        msg.setText(f"Вы уверены, что хотите удалить запись из {title}?")
+        msg.setText(f"Вы уверены, что хотите удалить запись из {title}?\n"
+                    f"Это повлечет за собой удаление всех связанных с записей!")
         msg.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
         # Показываем диалог и ждем ответа
         answer = msg.exec_()

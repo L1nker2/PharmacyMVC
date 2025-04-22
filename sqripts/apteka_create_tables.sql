@@ -1,4 +1,11 @@
--- 1. Таблица suppliers (модель Supplier) :contentReference[oaicite:0]{index=0}&#8203;:contentReference[oaicite:1]{index=1}
+-- 1. Таблица suppliers (модель Supplier)
+DROP TABLE IF EXISTS `shipmentitem`;
+DROP TABLE IF EXISTS `shipments`;
+DROP TABLE IF EXISTS `orders`;
+DROP TABLE IF EXISTS `medicines`;
+DROP TABLE IF EXISTS `employees`;
+DROP TABLE IF EXISTS `suppliers`;
+
 CREATE TABLE `suppliers` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `CompName` VARCHAR(100) NOT NULL,
@@ -62,7 +69,7 @@ CREATE TABLE `orders` (
 CREATE TABLE `shipments` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `DateReg` DATE NOT NULL,
-  `Amount` INT NOT NULL,
+  `Price` INT NOT NULL,
   `Status` TINYINT(1) NOT NULL,
   `Supplier` INT NOT NULL,
   `Employee` INT NOT NULL,
@@ -79,11 +86,11 @@ CREATE TABLE `shipments` (
 
 -- 6. Таблица shipmentitem (модель ShipmentItem) :contentReference[oaicite:10]{index=10}&#8203;:contentReference[oaicite:11]{index=11}
 CREATE TABLE `shipmentitem` (
-  `id` INT NOT NULL AUTO_INCREMENT,
+  --`id` INT NOT NULL AUTO_INCREMENT,
   `Shipment` INT,
   `Medicine` INT,
   `Quantity` INT NOT NULL,
-  PRIMARY KEY (`id`),
+  --PRIMARY KEY (`id`),
   INDEX (`Shipment`),
   INDEX (`Medicine`),
   CONSTRAINT `fk_shipmentitem_shipment`

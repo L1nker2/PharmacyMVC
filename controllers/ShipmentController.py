@@ -1,6 +1,9 @@
 from sqlalchemy.orm import Session, load_only
 from typing import Optional, List, Type
+from models.medicine import Medicine
 from models.shipment import Shipment
+from models.employee import Employee
+from models.supplier import Supplier
 from models.shipment_item import ShipmentItem
 
 
@@ -8,17 +11,40 @@ class ShipmentController:
     def __init__(self, db_session: Session):
         self.db = db_session
 
+    def get_all_suppliers(self):
+        """Получение всех поставщиков для выпадающего списка"""
+        return self.db.query(Supplier).order_by(Supplier.CompName).all()
+
+    def get_all_employees(self):
+        """Получение всех сотрудников для выпадающего списка"""
+        return self.db.query(Employee).order_by(Employee.LName).all()
+
     def create_shipment(self, shipment_data: dict, items: List[dict]) -> Shipment:
         """
         Создает новую поставку и связанные записи ShipmentItem.
         shipment_data – данные для Shipment (например, supplier_id, date и др.).
         items – список словарей с ключами 'medication_id' и 'quantity' для каждого медикамента в поставке.
+        Автоматически рассчитывает общую стоимость поставки на основе цен медикаментов.
         """
+        # Рассчитываем общую стоимость поставки
+        total_price = 0
+        for item in items:
+            med_id = item.get("medication_id")
+            qty = item.get("quantity", 0)
+            # Получаем медикамент из базы данных
+            medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
+            if not medication:
+                raise ValueError(f"Медикамент с ID {med_id} не найден")
+            total_price += medication.Price * qty
+
+        # Обновляем цену в shipment_data (перезаписываем, если была передана)
+        shipment_data["Price"] = total_price
+
         # Создаем объект Shipment
         shipment = Shipment(**shipment_data)
         self.db.add(shipment)
-        # Выполняем flush, чтобы сгенерировать shipment.id до создания связанных ShipmentItem&#8203;:contentReference[oaicite:5]{index=5}
         self.db.flush()
+
         # Создаем объекты ShipmentItem для каждого элемента поставки
         shipment_items = []
         for item in items:
@@ -27,9 +53,16 @@ class ShipmentController:
             shipment_item = ShipmentItem(Shipment=shipment.id, Medicine=med_id, Quantity=qty)
             shipment_items.append(shipment_item)
             self.db.add(shipment_item)
-        # Фиксируем изменения в базе (создание и shipment, и shipment_items)
+
+        # Обновляем количество медикаментов на складе
+        for item in items:
+            med_id = item.get("medication_id")
+            qty = item.get("quantity", 0)
+            medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
+            medication.Count += qty
+
+        # Фиксируем все изменения в базе
         self.db.commit()
-        # Опционально можно обновить объект shipment, чтобы загрузить связанные элементы
         self.db.refresh(shipment)
         return shipment
 

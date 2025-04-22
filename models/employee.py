@@ -16,8 +16,8 @@ class Employee(Base):
     Admin = Column(Boolean, nullable=False)
 
     # Связи: один сотрудник -> много заказов и много поставок
-    orders = relationship('Order', back_populates='employee')
-    shipments = relationship('Shipment', back_populates='employee')
+    shipments = relationship('Shipment', back_populates='employee', cascade="all, delete-orphan")
+    orders = relationship('Order', back_populates='employee', cascade="all, delete-orphan")
 
     def get_experience(self):
         """Вычислить стаж (количество полных лет с даты найма, хранящейся в DTB)."""
