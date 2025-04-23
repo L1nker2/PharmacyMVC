@@ -1,0 +1,140 @@
+/* --------------------------
+   Общие стили приложения
+   -------------------------- */
+QWidget {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #E9F9FF, stop:1 #ADD8E6);
+    font-family: "Segoe UI", sans-serif;
+    font-size: 16px;        /* увеличено с 14px */
+    color: #333;
+}
+
+/* --------------------------
+   Кнопки
+   -------------------------- */
+QPushButton {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #BEE7B8, stop:1 #8CCB8F);
+    color: #000;
+    border: 1px solid #6AA76A;
+    border-radius: 8px;
+    padding: 12px 24px;      /* увеличены отступы */
+    min-width: 100px;
+    font-size: 18px;         /* увеличено с 14px */
+}
+QPushButton:hover {
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #D7F0CA, stop:1 #A4D8A0);
+}
+QPushButton:pressed {
+    background: #8CCB8F;
+    padding-top: 14px;
+}
+
+/* --------------------------
+   Поля ввода и даты
+   -------------------------- */
+QLineEdit, QDateEdit {
+    background: #FFF;
+    border: 1px solid #BBB;
+    border-radius: 4px;
+    padding: 8px 10px;       /* увеличены */
+    font-size: 16px;         /* увеличено с 14px */
+}
+QLineEdit:focus, QDateEdit:focus {
+    border: 1px solid #6AA76A;
+    background: #F7FFF7;
+}
+
+/* --------------------------
+   Таблицы — фон и текст
+   -------------------------- */
+QTableView {
+    background-color: #FFFFFF;          /* белый фон всего виджета */
+    color: #000000;                     /* чёрный текст по умолчанию */
+    gridline-color: #ADC4D9;            /* цвет линий сетки */
+    alternate-background-color: #F7FFF7;/* чередующиеся строки */
+    font-size: 24px;                    /* ваш размер шрифта */
+}
+
+QTableView::item {
+    /* убираем любые дополнительные фоны */
+    background: transparent;
+}
+
+QTableView::item:selected {
+    background-color: #BEE7B8;          /* подсветка выбранной строки */
+    color: #000000;                     /* текст чёрный */
+}
+
+/* Заголовки оставляем как было */
+QHeaderView::section {
+    font-size: 24px;
+    padding: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #E0F2FF, stop:1 #B0DFFF);
+    border: 1px solid #ADC4D9;
+}
+/* --------------------------
+   Метки
+   -------------------------- */
+QLabel {
+    font-size: 16px;         /* увеличено с 14px */
+    color: #2F2F2F;
+}
+
+/* --------------------------
+   Вкладки
+   -------------------------- */
+QTabWidget::pane {
+    border: 1px solid #CCC;
+    border-radius: 4px;
+    padding: 6px;            /* чуть больше */
+}
+QTabBar::tab {
+    background: #D8F2FF;
+    border: 1px solid #CCC;
+    border-bottom-color: #999;
+    border-top-left-radius: 4px;
+    border-top-right-radius: 4px;
+    padding: 10px 20px;      /* увеличены */
+    margin-right: -1px;
+    font-size: 16px;         /* увеличено с 14px */
+}
+QTabBar::tab:selected {
+    background: #FFF;
+    border-bottom-color: #FFF;
+}
+
+/* --------------------------
+   Списки (ComboBox)
+   -------------------------- */
+QComboBox {
+    background: #FFF;
+    border: 1px solid #BBB;
+    border-radius: 4px;
+    padding: 8px 12px;       /* увеличены */
+    min-width: 140px;
+    font-size: 16px;         /* увеличено с 14px */
+}
+QComboBox:hover {
+    border: 1px solid #6AA76A;
+}
+
+/* --------------------------
+   Таблицы
+   -------------------------- */
+
+/* Увеличиваем шрифт таблицы в 1.5 раза (16px → 24px) */
+QTableView {
+    font-size: 18px;
+}
+
+/* Заголовки колонок таблицы */
+QHeaderView::section {
+    font-size: 18px;
+    padding: 6px;
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                                stop:0 #E0F2FF, stop:1 #B0DFFF);
+    border: 1px solid #ADC4D9;
+}

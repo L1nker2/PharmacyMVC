@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session, load_only
 from typing import Optional, Type
+
+from models.medicine import Medicine
 from models.order import Order
 
 
@@ -8,21 +10,36 @@ class OrderController:
         self.db = db_session
 
     def create_order(self, order_data: dict) -> Order:
-        """Создает новый заказ."""
-        if order_data['DateReg'] == '' or order_data['Amount'] == ''\
-            or order_data['Status'] == '' or order_data['Employee'] == ''\
-            or order_data['Medicine'] == '':
-            raise ValueError("Fill all fields")
-        if order_data['DateReg'] is None or order_data['Amount'] is None\
-            or order_data['Status'] is None or order_data['Employee'] is None\
-            or order_data['Medicine'] is None:
-            raise ValueError("Fill all fields")
-        if order_data.__contains__(None) or order_data.__contains__(''):
-            raise ValueError("Fill all fields")
+        """Создает новый заказ и уменьшает количество медикамента на складе."""
+        # Проверка заполненности полей
+        required_fields = ['DateReg', 'Amount', 'Status', 'Employee', 'Medicine']
+        if any(not order_data.get(field) for field in required_fields):
+            raise ValueError("Все обязательные поля должны быть заполнены")
+
+        # Начинаем транзакцию
+        self.db.begin()
+
+        # Получаем медикамент и блокируем запись для обновления
+        medicine = self.db.query(Medicine).filter_by(id=order_data['Medicine']).with_for_update().first()
+        if not medicine:
+            raise ValueError("Медикамент не найден")
+
+        # Проверяем достаточное количество
+        if medicine.Count < order_data['Amount']:
+            raise ValueError(f"Недостаточно медикамента на складе. Доступно: {medicine.Count}")
+
+        # Уменьшаем количество медикамента
+        medicine.Count -= order_data['Amount']
+
+        # Создаем заказ
         order = Order(**order_data)
         self.db.add(order)
+
+        # Сохраняем изменения
         self.db.commit()
         self.db.refresh(order)
+        self.db.refresh(medicine)
+
         return order
 
     def get_order_by_id(self, order_id: int) -> Type[Order]:

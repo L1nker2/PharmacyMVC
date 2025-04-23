@@ -64,3 +64,12 @@ class MedicineController:
         """Проверяет, уникален ли указанный логин (True, если такого логина нет в базе)."""
         existing = self.db.query(Medicine).filter(Medicine.MName == name).first()
         return existing is None
+
+    def get_medicines_by_supplier(self, id):
+        """Возвращает медикамент по ID поставщика или None, если не найден."""
+        medicine = self.db.query(Medicine).filter(Medicine.Supplier == id).first()
+        if medicine is None:
+            return None
+            #raise ValueError("Medicine not found")
+        else:
+            return medicine

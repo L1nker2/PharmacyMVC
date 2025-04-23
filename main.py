@@ -3,8 +3,9 @@ from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QDialog, QWidget,
     QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout,
     QTabWidget, QTableView, QMessageBox, QCheckBox,
-    QFormLayout, QDateEdit, QSizePolicy,
-    QAbstractItemView, QComboBox
+    QFormLayout, QDateEdit, QSizePolicy, QHeaderView,
+    QAbstractItemView, QComboBox, QLabel, QTableWidget,
+    QSpinBox, QTableWidgetItem
 )
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QRegExp, QDate
 from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem
@@ -15,7 +16,6 @@ from controllers.SupplierController import SupplierController
 from controllers.ShipmentController import ShipmentController
 from controllers.ShipmentItemController import ShipmentItemController
 from models.base import session
-from models.base import BaseModel
 from core.security import Security
 
 #region LoginDialog
@@ -402,12 +402,17 @@ class SupplierAddRecordDialog(QDialog):
 #region AddShipment
 # noinspection PyUnresolvedReferences
 class ShipmentAddRecordDialog(QDialog):
-    def __init__(self, title, controller):
+    def __init__(self, title, controllers):
         super().__init__()
-        self.controller = controller
+        self.medicine_controller = controllers['medicine']
+        self.employee_controller = controllers['employee']
+        self.suppliers_controller = controllers['supplier']
+        self.shipment_controller = controllers['shipment']
+
+        self.selected_medicines = []  # Список выбранных медикаментов
 
         self.setWindowTitle(title)
-        self.setMinimumSize(400, 350)
+        self.setMinimumSize(1000, 600)  # Увеличиваем размер окна
 
         # Основной layout
         layout = QVBoxLayout()
@@ -415,14 +420,15 @@ class ShipmentAddRecordDialog(QDialog):
 
         # 1. Выпадающий список поставщиков
         self.supplier_combo = QComboBox()
-        suppliers = self.controller.get_all_suppliers()
+        suppliers = self.suppliers_controller.get_all()
         for supplier in suppliers:
             self.supplier_combo.addItem(supplier.CompName, supplier.id)
         form_layout.addRow("Поставщик:", self.supplier_combo)
+        self.supplier_combo.currentIndexChanged.connect(self.update_medicines_table)
 
         # 2. Выпадающий список сотрудников
         self.employee_combo = QComboBox()
-        employees = self.controller.get_all_employees()
+        employees = self.employee_controller.get_all()
         for employee in employees:
             self.employee_combo.addItem(f"{employee.LName} {employee.FName}", employee.id)
         form_layout.addRow("Сотрудник:", self.employee_combo)
@@ -436,27 +442,291 @@ class ShipmentAddRecordDialog(QDialog):
         self.status_check.setChecked(True)
         form_layout.addRow("Статус:", self.status_check)
 
-        # 4. Кнопка сохранения
+        # 4. Таблица доступных медикаментов
+        self.medicines_label = QLabel("Доступные медикаменты:")
+        self.medicines_table = QTableWidget()
+        self.medicines_table.setColumnCount(5)
+        self.medicines_table.setHorizontalHeaderLabels(["Выбрать", "Название", "Описание", "Цена", "Количество"])
+        self.medicines_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.medicines_table.setSelectionMode(QAbstractItemView.NoSelection)
+        self.medicines_table.setEditTriggers(QAbstractItemView.NoEditTriggers)
+
+        # 5. Поля для работы с медикаментами
+        self.quantity_spin = QSpinBox()
+        self.quantity_spin.setMinimum(1)
+        self.quantity_spin.setMaximum(1000)
+        self.quantity_spin.setValue(1)
+
+        self.add_meds_btn = QPushButton("Добавить выбранные")
+        self.add_meds_btn.clicked.connect(self.add_selected_medicines)
+
+        # 6. Таблица выбранных медикаментов
+        self.selected_meds_label = QLabel("Выбранные медикаменты:")
+        self.selected_meds_table = QTableWidget()
+        self.selected_meds_table.setColumnCount(5)
+        self.selected_meds_table.setHorizontalHeaderLabels(["ID", "Название", "Количество", "Цена", "Сумма"])
+        self.selected_meds_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # 7. Кнопка удаления выбранных медикаментов
+        self.remove_meds_btn = QPushButton("Удалить выбранные")
+        self.remove_meds_btn.clicked.connect(self.remove_selected_medicines)
+
+        # 8. Кнопка сохранения
         self.save_btn = QPushButton("Сохранить поставку")
         self.save_btn.clicked.connect(self.save_shipment)
 
         # Сборка интерфейса
         layout.addLayout(form_layout)
+        layout.addWidget(self.medicines_label)
+        layout.addWidget(self.medicines_table)
+        layout.addWidget(QLabel("Количество:"))
+        layout.addWidget(self.quantity_spin)
+        layout.addWidget(self.add_meds_btn)
+        layout.addWidget(self.selected_meds_label)
+        layout.addWidget(self.selected_meds_table)
+        layout.addWidget(self.remove_meds_btn)
         layout.addWidget(self.save_btn)
         self.setLayout(layout)
-        self.setWindowTitle("Новая поставка")
+
+        # Инициализация таблицы медикаментов
+        self.update_medicines_table()
+
+    def update_medicines_table(self):
+        """Обновляет таблицу доступных медикаментов при изменении поставщика"""
+        supplier_id = self.supplier_combo.currentData()
+        if not supplier_id:
+            return
+
+        # Получаем медикаменты и гарантируем, что это список
+        medicine = self.medicine_controller.get_medicines_by_supplier(supplier_id)
+        medicines = [medicine] if medicine else []
+
+        if not medicines:
+            # Если медикаментов нет, показываем сообщение
+            self.medicines_table.setRowCount(1)
+
+            # Очищаем все ячейки
+            for col in range(self.medicines_table.columnCount()):
+                self.medicines_table.setItem(0, col, QTableWidgetItem(""))
+
+            # Делаем объединенную ячейку с сообщением
+            self.medicines_table.setSpan(0, 0, 1, self.medicines_table.columnCount())
+            self.medicines_table.setItem(0, 0, QTableWidgetItem("Медикаменты отсутствуют"))
+            self.medicines_table.item(0, 0).setTextAlignment(Qt.AlignCenter)
+
+            # Делаем текст серым и курсивом
+            font = self.medicines_table.item(0, 0).font()
+            font.setItalic(True)
+            self.medicines_table.item(0, 0).setFont(font)
+            self.medicines_table.item(0, 0).setForeground(Qt.gray)
+
+            # Отключаем чекбокс (если он есть)
+            if self.medicines_table.cellWidget(0, 0):
+                self.medicines_table.cellWidget(0, 0).layout().itemAt(0).widget().setEnabled(False)
+
+            return
+
+        # Если медикаменты есть, отображаем их
+        self.medicines_table.setRowCount(len(medicines))
+        self.medicines_table.clearSpans()  # Сбрасываем объединенные ячейки
+
+        for row, medicine in enumerate(medicines):
+            # Колонка с чекбоксом
+            chk_widget = QWidget()
+            chk_layout = QHBoxLayout(chk_widget)
+            chk_layout.setAlignment(Qt.AlignCenter)
+            chk_layout.setContentsMargins(0, 0, 0, 0)
+            checkbox = QCheckBox()
+            chk_layout.addWidget(checkbox)
+            self.medicines_table.setCellWidget(row, 0, chk_widget)
+
+            # Остальные колонки
+            self.medicines_table.setItem(row, 1, QTableWidgetItem(medicine.MName))
+            self.medicines_table.setItem(row, 2, QTableWidgetItem(medicine.Description))
+            self.medicines_table.setItem(row, 3, QTableWidgetItem(str(medicine.Price)))
+            self.medicines_table.setItem(row, 4, QTableWidgetItem(str(medicine.Count)))
+
+    def add_selected_medicines(self):
+        """Добавляет выбранные медикаменты в список"""
+        supplier_id = self.supplier_combo.currentData()
+        if not supplier_id:
+            return
+
+        count = self.quantity_spin.value()
+
+        # Получаем все медикаменты поставщика один раз
+        medicine = self.medicine_controller.get_medicines_by_supplier(supplier_id)
+        medicines = [medicine] if medicine else []
+
+        for row in range(self.medicines_table.rowCount()):
+            widget = self.medicines_table.cellWidget(row, 0)
+            checkbox = widget.layout().itemAt(0).widget()
+
+            if checkbox.isChecked() and row < len(medicines):
+                med = medicines[row]
+                med_id = med.id
+                name = self.medicines_table.item(row, 1).text()
+                price = float(self.medicines_table.item(row, 3).text())
+                total = price * count
+
+                # Проверяем, не добавлен ли уже этот медикамент
+                existing_idx = next((i for i, m in enumerate(self.selected_medicines)
+                                     if m["id"] == med_id), None)
+
+                if existing_idx is not None:
+                    # Увеличиваем количество, если уже добавлен
+                    self.selected_medicines[existing_idx]["Count"] += count
+                    self.selected_medicines[existing_idx]["total"] += total
+                else:
+                    # Добавляем новый медикамент
+                    self.selected_medicines.append({
+                        "id": med_id,
+                        "name": name,
+                        "Count": count,
+                        "Price": price,
+                        "total": total
+                    })
+
+        self.update_selected_medicines_table()
+
+    def remove_selected_medicines(self):
+        """Удаляет выбранные медикаменты из списка"""
+        selected_rows = set(index.row() for index in
+                            self.selected_meds_table.selectedIndexes())
+
+        # Удаляем в обратном порядке, чтобы не сбить индексы
+        for row in sorted(selected_rows, reverse=True):
+            if 0 <= row < len(self.selected_medicines):
+                self.selected_medicines.pop(row)
+
+        self.update_selected_medicines_table()
+
+    def update_selected_medicines_table(self):
+        """Обновляет таблицу выбранных медикаментов"""
+        self.selected_meds_table.setRowCount(len(self.selected_medicines))
+
+        for row, med in enumerate(self.selected_medicines):
+            self.selected_meds_table.setItem(row, 0, QTableWidgetItem(str(med["id"])))
+            self.selected_meds_table.setItem(row, 1, QTableWidgetItem(med["name"]))
+            self.selected_meds_table.setItem(row, 2, QTableWidgetItem(str(med["Count"])))
+            self.selected_meds_table.setItem(row, 3, QTableWidgetItem(str(med["Price"])))
+            self.selected_meds_table.setItem(row, 4, QTableWidgetItem(str(med["total"])))
 
     def save_shipment(self):
-        data={
+        """Сохраняет поставку с выбранными медикаментами"""
+        if not self.selected_medicines:
+            #self.controller.show_error_message("Не выбраны медикаменты для поставки")
+            return
+
+        # Основные данные поставки
+        shipment_data = {
             "DateReg": self.date_edit.date().toPyDate(),
             "Status": self.status_check.isChecked(),
             "Supplier": self.supplier_combo.currentData(),
             "Employee": self.employee_combo.currentData(),
-            "Price": 0  # Будет рассчитано автоматически в контроллере
+            "Price": sum(med["total"] for med in self.selected_medicines)
         }
-        print(data)
-        items = 0
-        self.accept()
+
+        # Список медикаментов
+        items = [
+            {
+                "id": med["id"],
+                "Count": med["Count"],  # Используем quantity вместо Count для единообразия
+                "Price": med["Price"]
+            }
+            for med in self.selected_medicines
+        ]
+
+        try:
+            # Вызываем метод контроллера с разделенными данными
+            self.shipment_controller.create_shipment(shipment_data, items)
+            self.accept()
+        except Exception as e:
+            pass
+            #self.controller.show_error_message(f"Ошибка при сохранении: {str(e)}")
+#endregion
+
+#region AddOrder
+# noinspection PyUnresolvedReferences
+class OrderAddRecordDialog(QDialog):
+    def __init__(self, title, controllers):
+        super().__init__()
+        self.medicine_controller = controllers['medicine']
+        self.employee_controller = controllers['employee']
+        self.suppliers_controller = controllers['supplier']
+        self.shipment_controller = controllers['shipment']
+
+        self.setWindowTitle(title)
+
+        # Основной layout
+        layout = QVBoxLayout()
+        form_layout = QFormLayout()
+
+        # 1. Поля даты
+        self.date_edit = QDateEdit(QDate.currentDate())
+        self.date_edit.setCalendarPopup(True)
+        form_layout.addRow("Дата поставки:", self.date_edit)
+
+        # 2. Выпадающий список лекарств
+        self.medicine_combo = QComboBox()
+        medicines = self.medicine_controller.get_all()
+        for medicine in medicines:
+            self.medicine_combo.addItem(medicine.MName, medicine.id)
+        form_layout.addRow("Лекарство:", self.medicine_combo)
+        self.medicine_combo.currentIndexChanged.connect(self.update_price)
+
+        # 3. Выпадающий список сотрудников
+        self.employee_combo = QComboBox()
+        employees = self.employee_controller.get_all()
+        for employee in employees:
+            self.employee_combo.addItem(f"{employee.LName} {employee.FName}", employee.id)
+        form_layout.addRow("Сотрудник:", self.employee_combo)
+
+        # 4. Выбор количества
+        self.quantity_spin = QSpinBox()
+        self.quantity_spin.setMinimum(1)
+        self.quantity_spin.setMaximum(1)
+        self.quantity_spin.setValue(1)
+        self.quantity_spin.valueChanged.connect(self.edit_price)
+        form_layout.addRow("Количество:", self.quantity_spin)
+
+        # 5. Статус заказа
+        self.status_check = QCheckBox("Активен")
+        self.status_check.setChecked(True)
+        form_layout.addRow("Статус:", self.status_check)
+
+        # 6. Метка цены
+        self.price_label = QLabel()
+        form_layout.addRow("Итоговая цена:", self.price_label)
+
+        # 7. Кнопка сохранения
+        self.save_btn = QPushButton("Сохранить сделку")
+        self.save_btn.clicked.connect(self.save_order)
+
+        layout.addLayout(form_layout)
+        layout.addWidget(self.save_btn)
+        self.setLayout(layout)
+
+    def update_price(self):
+        medicine_id = self.medicine_combo.currentData()
+        if not medicine_id:
+            return
+        medicine = self.medicine_controller.get_medicine_by_id(medicine_id)
+
+        self.quantity_spin.setMaximum(medicine.Count)
+
+    def edit_price(self):
+        medicine_id = self.medicine_combo.currentData()
+        if not medicine_id:
+            return
+
+        medicine = self.medicine_controller.get_medicine_by_id(medicine_id)
+        count = self.quantity_spin.value()
+
+        self.price_label.setText(str(medicine.Price * count))
+
+    def save_order(self):
+        pass
 #endregion
 
 
@@ -588,25 +858,97 @@ class MainWindow(QMainWindow):
             'DateReg': 'Дата', 'Status': 'Статус',
             'Employee': 'Сотрудник', 'Medicine': 'Лекарство',
             'CompName': 'Компания', 'Address': 'Адрес', 'INN': 'ИНН',
-            'Shipment': 'Поставка', 'Quantity': 'Количество'
+            'Shipment': 'Поставка', 'Quantity': 'Количество', 'Amount':'Количество'
         }
+
+        # Маппинг для связанных полей (какое поле отображать вместо ID)
+        relation_map = {
+            'Employee': {
+                'field': 'employee',  # Имя атрибута в модели
+                'display': lambda x: f"{x.LName} {x.FName}" if x else ""
+            },
+            'Supplier': {
+                'field': 'supplier',
+                'display': lambda x: x.CompName if x else ""
+            },
+            'Medicine': {
+                'field': 'medicine',
+                'display': lambda x: x.MName if x else ""
+            },
+            'Category': {
+                'field': 'category',
+                'display': lambda x: x.Name if x else ""
+            }
+        }
+
+        # Специальное отображение для булевых полей
+        bool_display_map = {
+            'Status': {True: 'Активен', False: 'Неактивен'},
+            'Admin': {True: 'Администратор', False: 'Обычный'},
+            True: 'Да',  # Общее значение для других булевых полей
+            False: 'Нет'
+        }
+
         for f in fields:
             headers.append(rus_map.get(f, f))
         model.setHorizontalHeaderLabels(headers)
+
         rows = ctrl.get_all()
         for row in rows:
             items = []
             for f in fields:
                 if not hasattr(row, f):
-                    print(f"Предупреждение: атрибут {f} не найден в объекте Shipment")
-                # Получаем значение атрибута
+                    print(f"Предупреждение: атрибут {f} не найден в объекте {type(row).__name__}")
+                    items.append(QStandardItem(""))
+                    continue
+
                 val = getattr(row, f)
+
+                if f in relation_map:
+                    try:
+                        # Получаем связанный объект по правильному имени атрибута
+                        related_obj = getattr(row, relation_map[f]['field'])
+                        display_val = relation_map[f]['display'](related_obj)
+                        items.append(QStandardItem(display_val))
+                        continue
+                    except AttributeError as e:
+                        print(f"Ошибка доступа к связанному объекту {f}: {str(e)}")
+                        items.append(QStandardItem(""))
+                        continue
+                    except Exception as e:
+                        print(f"Ошибка при обработке связанного поля {f}: {str(e)}")
+                        items.append(QStandardItem(""))
+                        continue
+
+                # Обработка булевых значений
+                if isinstance(val, bool):
+                    display_val = bool_display_map.get(f, {}).get(val, bool_display_map.get(val, str(val)))
+                    items.append(QStandardItem(display_val))
+                    continue
+
+                """# Обработка связанных полей
+                if f in relation_map and val is not None:
+                    try:
+                        # Получаем связанный объект
+                        related_obj = getattr(row, f.lower())  # или другой способ получения объекта
+                        if related_obj:
+                            display_val = relation_map[f](related_obj)
+                            items.append(QStandardItem(str(display_val)))
+                            continue
+                    except Exception as e:
+                        print(f"Ошибка при обработке связанного поля {f}: {str(e)}")
+"""
+                # Обычное поле
                 items.append(QStandardItem(str(val)))
+
             model.appendRow(items)
+
         proxy = QSortFilterProxyModel()
         proxy.setSourceModel(model)
         proxy.setFilterKeyColumn(-1)
+
         table = QTableView()
+        table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setModel(proxy)
         table.sortByColumn(0, Qt.AscendingOrder)
         table.setSortingEnabled(True)
@@ -635,9 +977,13 @@ class MainWindow(QMainWindow):
         btn_layout.addWidget(del_btn)
         vbox.addLayout(btn_layout)
 
-        if not is_admin and title== "Сотрудники":
+        if not is_admin and title == "Сотрудники":
             add_btn.setEnabled(False)
             del_btn.setEnabled(False)
+        if title == "Поставки":
+            edit_btn.setEnabled(False)
+        if title == "Лекарства":
+            edit_btn.setEnabled(False)
 
         # здесь нужно получить переменную выделенной строки
         def get_selected_row():
@@ -668,13 +1014,15 @@ class MainWindow(QMainWindow):
             pass
             #dlg = AddRecordDialog("Добавить лекарство")
         elif title == "Заказы":
-            pass
+            dlg = OrderAddRecordDialog(title="Добавить сделку", controllers=self.controllers)
+            if dlg.exec_() == QDialog.Accepted:
+                self.refresh_current_tab()
         elif title == "Поставщики":
             dlg = SupplierAddRecordDialog(title="Добавить поставщика", controller=self.controllers['supplier'])
             if dlg.exec_() == QDialog.Accepted:
                 self.refresh_current_tab()
         elif title == "Поставки":
-            dlg = ShipmentAddRecordDialog(title="Добавить поставку", controller=self.controllers['shipment'])
+            dlg = ShipmentAddRecordDialog(title="Добавить поставку", controllers=self.controllers)
             if dlg.exec_() == QDialog.Accepted:
                 self.refresh_current_tab()
 
@@ -737,9 +1085,13 @@ class MainWindow(QMainWindow):
 
 
 
+def load_stylesheet(file_path):
+    with open(file_path, "r", encoding="utf-8") as f:
+        return f.read()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
+    app.setStyleSheet(load_stylesheet("styles.qss"))
     employee_ctrl = EmployeeController(session)
     medicine_ctrl = MedicineController(session)
     order_ctrl = OrderController(session)

@@ -29,8 +29,8 @@ class ShipmentController:
         # Рассчитываем общую стоимость поставки
         total_price = 0
         for item in items:
-            med_id = item.get("medication_id")
-            qty = item.get("quantity", 0)
+            med_id = item.get("id")
+            qty = item.get("Count", 0)
             # Получаем медикамент из базы данных
             medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
             if not medication:
@@ -56,8 +56,8 @@ class ShipmentController:
 
         # Обновляем количество медикаментов на складе
         for item in items:
-            med_id = item.get("medication_id")
-            qty = item.get("quantity", 0)
+            med_id = item.get("id")
+            qty = item.get("Count", 0)
             medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
             medication.Count += qty
 
