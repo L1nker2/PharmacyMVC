@@ -1,0 +1,4 @@
+encryption.key
+encryption.salt
+.venv
+__pycache__

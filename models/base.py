@@ -22,5 +22,6 @@ Base = declarative_base(cls=BaseModel)
 engine = create_engine("mysql+mysqldb://python:python@127.0.0.1/apteka",
     pool_recycle=3600,
     echo=False)
+
 maker = sessionmaker(bind=engine)
 session = maker()

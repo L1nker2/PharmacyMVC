@@ -86,11 +86,9 @@ CREATE TABLE `shipments` (
 
 -- 6. Таблица shipmentitem (модель ShipmentItem) :contentReference[oaicite:10]{index=10}&#8203;:contentReference[oaicite:11]{index=11}
 CREATE TABLE `shipmentitem` (
-  --`id` INT NOT NULL AUTO_INCREMENT,
   `Shipment` INT,
   `Medicine` INT,
   `Quantity` INT NOT NULL,
-  --PRIMARY KEY (`id`),
   INDEX (`Shipment`),
   INDEX (`Medicine`),
   CONSTRAINT `fk_shipmentitem_shipment`

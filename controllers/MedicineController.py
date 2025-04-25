@@ -29,8 +29,12 @@ class MedicineController:
         """Возвращает медикамент по ID или None, если не найден."""
         medicine = self.db.get(Medicine, medicine_id)
         if medicine is None:
+            self.db.commit()
             raise ValueError("Medicine not found")
-        else: return medicine
+        else:
+            self.db.commit()
+            return medicine
+
 
     def update_medicine(self, medicine_id: int, update_data: dict) -> Type[Medicine] | None:
         """Обновляет данные медикамента по ID. Возвращает обновленный объект или None."""
@@ -63,13 +67,16 @@ class MedicineController:
     def is_name_unique(self, name: str) -> bool:
         """Проверяет, уникален ли указанный логин (True, если такого логина нет в базе)."""
         existing = self.db.query(Medicine).filter(Medicine.MName == name).first()
+        self.db.commit()
         return existing is None
 
     def get_medicines_by_supplier(self, id):
         """Возвращает медикамент по ID поставщика или None, если не найден."""
         medicine = self.db.query(Medicine).filter(Medicine.Supplier == id).first()
         if medicine is None:
+            self.db.commit()
             return None
             #raise ValueError("Medicine not found")
         else:
+            self.db.commit()
             return medicine

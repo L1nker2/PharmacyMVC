@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (
     QSpinBox, QTableWidgetItem
 )
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QRegExp, QDate
-from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem
+from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem, QIntValidator
 from controllers.EmployeeController import EmployeeController
 from controllers.MedicineController import MedicineController
 from controllers.OrderController import OrderController
@@ -655,6 +655,7 @@ class OrderAddRecordDialog(QDialog):
         self.employee_controller = controllers['employee']
         self.suppliers_controller = controllers['supplier']
         self.shipment_controller = controllers['shipment']
+        self.order_controller = controllers['order']
 
         self.setWindowTitle(title)
 
@@ -714,6 +715,7 @@ class OrderAddRecordDialog(QDialog):
         medicine = self.medicine_controller.get_medicine_by_id(medicine_id)
 
         self.quantity_spin.setMaximum(medicine.Count)
+        self.edit_price()
 
     def edit_price(self):
         medicine_id = self.medicine_combo.currentData()
@@ -726,7 +728,116 @@ class OrderAddRecordDialog(QDialog):
         self.price_label.setText(str(medicine.Price * count))
 
     def save_order(self):
-        pass
+      """Собирает данные из полей формы и сохраняет заказ через контроллер"""
+      try:
+        # 1. Собираем данные из полей формы
+        order_data = {
+          "DateReg": self.date_edit.date().toPyDate(),  # Получаем дату как datetime.date
+          "Amount": self.quantity_spin.value(),  # Количество лекарства
+          "Status": self.status_check.isChecked(),  # Статус (True/False)
+          "Employee": self.employee_combo.currentData(),  # ID сотрудника
+          "Medicine": self.medicine_combo.currentData()  # ID лекарства
+        }
+
+        # 2. Получаем цену лекарства для расчета суммы
+        medicine_id = order_data['Medicine']
+        medicine = self.medicine_controller.get_medicine_by_id(medicine_id)
+        if not medicine:
+          raise ValueError("Лекарство не найдено")
+
+        # 4. Проверяем, что количество не превышает доступное
+        if order_data["Amount"] > medicine.Count:
+          raise ValueError(f"Недостаточно лекарства на складе. Доступно: {medicine.Count}")
+
+        # 5. Создаем заказ через контроллер
+        # (предполагается, что у вас есть метод create_order в order_controller)
+        order = self.order_controller.create_order(order_data)
+
+        # 6. Показываем сообщение об успехе и закрываем диалог
+        QMessageBox.information(self, "Успех", "Заказ успешно создан!")
+        self.accept()
+
+      except ValueError as e:
+        # Показываем ошибки валидации
+        QMessageBox.warning(self, "Ошибка", str(e))
+#endregion
+
+#region AddMedicine
+class MedicineAddRecordDialog(QDialog):
+    def __init__(self, title, controllers):
+        super().__init__()
+
+        self.setWindowTitle(title)
+
+        self.medicine_controller = controllers['medicine']
+        self.supplier_controller = controllers['supplier']
+
+        # Основной layout
+        layout = QVBoxLayout()
+        form_layout = QFormLayout()
+
+        # Текстовое поле для названия
+        self.mname_input = QLineEdit()
+        form_layout.addRow("Название:", self.mname_input)
+
+        # Текстовое поле для цены
+        self.price_input = QLineEdit()
+        validator = QIntValidator(0, 2147483647)  # Максимальное значение int
+        self.price_input.setValidator(validator)
+        form_layout.addRow("Цена:", self.price_input)
+
+        # Крутилка для количества(поумолчанию = 0 потому что пополняется через поставки)
+        self.count_spin = QSpinBox()
+        self.count_spin.setMinimum(1)
+        self.count_spin.setMaximum(1)
+        self.count_spin.setValue(1)
+        form_layout.addRow("Количество:", self.count_spin)
+
+        # Текстовое поле для описания
+        self.descriptoin_input = QLineEdit()
+        form_layout.addRow("Описание:", self.descriptoin_input)
+
+        # Текстовое поле для категории
+        self.category_input = QLineEdit()
+        form_layout.addRow("Категория:",self.category_input)
+
+        # Текстовое поле для срока годности
+        self.bt_input = QLineEdit()
+        form_layout.addRow("Срок годности:", self.bt_input)
+
+        # Выпадающий список для поставщика
+        self.supplier_combo = QComboBox()
+        suppliers = self.supplier_controller.get_all()
+        for supplier in suppliers:
+            self.supplier_combo.addItem(supplier.CompName, supplier.id)
+        form_layout.addRow("Поставщик:", self.supplier_combo)
+
+        # Кнопка сохранения
+        self.save_btn = QPushButton("Сохранить сделку")
+        self.save_btn.clicked.connect(self.save_medicine)
+
+        layout.addLayout(form_layout)
+        layout.addWidget(self.save_btn)
+        self.setLayout(layout)
+    
+    def save_medicine(self):
+        medicine_data = {
+            'MName': self.mname_input.text(),
+            'Price' : int(self.price_input.text()),
+            'Count' : int(self.count_spin.value()),
+            'Description' : self.descriptoin_input.text(),
+            'Category' : self.category_input.text(),
+            'BT' : self.bt_input.text(),
+            'Supplier' : self.supplier_combo.currentData()
+        }
+        try:
+            self.medicine_controller.create_medicine(medicine_data)
+            QMessageBox.information(self, "Успех", "Медикамент успешно создан!")
+            self.accept()
+        except Exception as e:
+            print(e)
+            QMessageBox.warning(self, "Ошибка", str(e))
+
 #endregion
 
 
@@ -1011,8 +1122,9 @@ class MainWindow(QMainWindow):
             if dlg.exec_() == QDialog.Accepted:
                 self.refresh_current_tab()
         elif title == "Лекарства":
-            pass
-            #dlg = AddRecordDialog("Добавить лекарство")
+            dlg = MedicineAddRecordDialog(title="Лекарства", controllers=self.controllers)
+            if dlg.exec_() == QDialog.Accepted:
+                self.refresh_current_tab()
         elif title == "Заказы":
             dlg = OrderAddRecordDialog(title="Добавить сделку", controllers=self.controllers)
             if dlg.exec_() == QDialog.Accepted:

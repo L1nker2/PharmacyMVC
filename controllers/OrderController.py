@@ -1,6 +1,5 @@
 from sqlalchemy.orm import Session, load_only
 from typing import Optional, Type
-
 from models.medicine import Medicine
 from models.order import Order
 
@@ -15,6 +14,9 @@ class OrderController:
         required_fields = ['DateReg', 'Amount', 'Status', 'Employee', 'Medicine']
         if any(not order_data.get(field) for field in required_fields):
             raise ValueError("Все обязательные поля должны быть заполнены")
+
+        if self.db.in_transaction():
+            self.db.commit()
 
         # Начинаем транзакцию
         self.db.begin()
