@@ -5,10 +5,10 @@ from PyQt5.QtWidgets import (
     QTabWidget, QTableView, QMessageBox, QCheckBox,
     QFormLayout, QDateEdit, QSizePolicy, QHeaderView,
     QAbstractItemView, QComboBox, QLabel, QTableWidget,
-    QSpinBox, QTableWidgetItem
+    QSpinBox, QTableWidgetItem, QStyledItemDelegate
 )
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QRegExp, QDate
-from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem, QIntValidator
+from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem, QIntValidator, QColor, QBrush
 from controllers.EmployeeController import EmployeeController
 from controllers.MedicineController import MedicineController
 from controllers.OrderController import OrderController
@@ -840,7 +840,6 @@ class MedicineAddRecordDialog(QDialog):
 
 #endregion
 
-
 # noinspection PyUnresolvedReferences
 class MainWindow(QMainWindow):
     def __init__(self, controllers, user):
@@ -950,7 +949,7 @@ class MainWindow(QMainWindow):
 
 
         tab_widget.setCurrentIndex(current_idx)
-
+    
     def create_table_tab(self, ctrl, fields, title, is_admin, is_employee=False):
         widget = QWidget()
         vbox = QVBoxLayout()
@@ -959,7 +958,15 @@ class MainWindow(QMainWindow):
         search_input.setPlaceholderText("Поиск...")
         vbox.addWidget(search_input)
 
+        search_button = QPushButton("Найти")
+        vbox.addWidget(search_button)
+
+        if title == "Лекарства":
+            fitler_button = QPushButton("Фильтры")
+            vbox.addWidget(fitler_button)
+
         model = QStandardItemModel()
+
         headers = []
         rus_map = {
             'id': 'Номер ПП', 'FName': 'Имя', 'LName': 'Фамилия', 'Position': 'Должность',
@@ -987,8 +994,8 @@ class MainWindow(QMainWindow):
                 'display': lambda x: x.MName if x else ""
             },
             'Category': {
-                'field': 'category',
-                'display': lambda x: x.Name if x else ""
+                'field': 'Category',
+                'display': lambda x: x if x else ""
             }
         }
 
@@ -1060,24 +1067,37 @@ class MainWindow(QMainWindow):
 
         table = QTableView()
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setModel(proxy)
+        table.setModel(model)
         table.sortByColumn(0, Qt.AscendingOrder)
         table.setSortingEnabled(True)
         table.setSelectionBehavior(QTableView.SelectRows)
         table.resizeColumnsToContents()
         table.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        table.setSelectionMode(QAbstractItemView.SingleSelection)
+        #table.setSelectionMode(QAbstractItemView.SingleSelection)
+        table.setSelectionMode(QAbstractItemView.MultiSelection)
 
-        search_input.textChanged.connect(
-            lambda text: proxy.setFilterRegExp(
-                QRegExp(text, Qt.CaseInsensitive, QRegExp.FixedString)
-            )
-        )
-
+        
         if not is_admin or is_employee:
             table.setEditTriggers(QTableView.NoEditTriggers)
 
         vbox.addWidget(table)
+        
+        # Поиск по кнопке — выделение подходящих строк
+        def perform_search():
+            search_text = search_input.text().lower()
+            table.clearSelection()
+
+            if not search_text:
+                return
+
+            for row in range(model.rowCount()):
+                match_found = False
+                for col in range(model.columnCount()):
+                    item = model.item(row, col)
+                    if item and search_text in item.text().lower():
+                        match_found = True
+                if match_found:
+                    table.selectRow(row)
 
         btn_layout = QHBoxLayout()
         add_btn = QPushButton("Добавить")
@@ -1091,12 +1111,14 @@ class MainWindow(QMainWindow):
         if not is_admin and title == "Сотрудники":
             add_btn.setEnabled(False)
             del_btn.setEnabled(False)
+            edit_btn.setEnabled(False)
         if title == "Поставки":
             edit_btn.setEnabled(False)
         if title == "Лекарства":
             edit_btn.setEnabled(False)
 
-        # здесь нужно получить переменную выделенной строки
+        search_button.clicked.connect(perform_search)
+
         def get_selected_row():
             selected_indexes = table.selectionModel().selectedRows()
             if selected_indexes:

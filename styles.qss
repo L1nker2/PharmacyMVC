@@ -30,6 +30,9 @@ QPushButton:pressed {
     background: #8CCB8F;
     padding-top: 14px;
 }
+QPushButton:disabled {
+    background:rgb(17, 28, 18);
+}
 
 /* --------------------------
    Поля ввода и даты
