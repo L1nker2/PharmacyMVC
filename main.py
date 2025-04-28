@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
     QTabWidget, QTableView, QMessageBox, QCheckBox,
     QFormLayout, QDateEdit, QSizePolicy, QHeaderView,
     QAbstractItemView, QComboBox, QLabel, QTableWidget,
-    QSpinBox, QTableWidgetItem, QStyledItemDelegate
+    QSpinBox, QTableWidgetItem, QDialogButtonBox
 )
 from PyQt5.QtCore import Qt, QSortFilterProxyModel, QRegExp, QDate
 from PyQt5.QtGui import QRegExpValidator, QStandardItemModel, QStandardItem, QIntValidator, QColor, QBrush
@@ -498,8 +498,9 @@ class ShipmentAddRecordDialog(QDialog):
             return
 
         # Получаем медикаменты и гарантируем, что это список
-        medicine = self.medicine_controller.get_medicines_by_supplier(supplier_id)
-        medicines = [medicine] if medicine else []
+        Medicine = self.medicine_controller.get_medicines_by_supplier(supplier_id)
+        medicines = Medicine
+        row_cout = len(medicines)
 
         if not medicines:
             # Если медикаментов нет, показываем сообщение
@@ -840,6 +841,7 @@ class MedicineAddRecordDialog(QDialog):
 
 #endregion
 
+
 # noinspection PyUnresolvedReferences
 class MainWindow(QMainWindow):
     def __init__(self, controllers, user):
@@ -961,24 +963,19 @@ class MainWindow(QMainWindow):
         search_button = QPushButton("Найти")
         vbox.addWidget(search_button)
 
-        if title == "Лекарства":
-            fitler_button = QPushButton("Фильтры")
-            vbox.addWidget(fitler_button)
-
         model = QStandardItemModel()
 
         headers = []
         rus_map = {
             'id': 'Номер ПП', 'FName': 'Имя', 'LName': 'Фамилия', 'Position': 'Должность',
-            'Number': 'Телефон', 'Login': 'Логин', 'DTB': 'Дата рождения', 'Admin': 'Админ',
+            'Number': 'Телефон', 'Login': 'Логин', 'DTB': 'Дата рождения', 'Admin': 'Роль',
             'MName': 'Название', 'Price': 'Цена', 'Count': 'Остаток', 'Description': 'Описание',
-            'Category': 'Категория', 'BT': 'BT', 'Supplier': 'Поставщик',
+            'Category': 'Категория', 'BT': 'Срок годности', 'Supplier': 'Поставщик',
             'DateReg': 'Дата', 'Status': 'Статус',
             'Employee': 'Сотрудник', 'Medicine': 'Лекарство',
             'CompName': 'Компания', 'Address': 'Адрес', 'INN': 'ИНН',
             'Shipment': 'Поставка', 'Quantity': 'Количество', 'Amount':'Количество'
         }
-
         # Маппинг для связанных полей (какое поле отображать вместо ID)
         relation_map = {
             'Employee': {
@@ -998,11 +995,10 @@ class MainWindow(QMainWindow):
                 'display': lambda x: x if x else ""
             }
         }
-
         # Специальное отображение для булевых полей
         bool_display_map = {
-            'Status': {True: 'Активен', False: 'Неактивен'},
-            'Admin': {True: 'Администратор', False: 'Обычный'},
+            'Status': {True: 'Выполнено', False: 'В ожидании'},
+            'Admin': {True: 'Администратор', False: 'Сотрудник'},
             True: 'Да',  # Общее значение для других булевых полей
             False: 'Нет'
         }
@@ -1044,18 +1040,6 @@ class MainWindow(QMainWindow):
                     items.append(QStandardItem(display_val))
                     continue
 
-                """# Обработка связанных полей
-                if f in relation_map and val is not None:
-                    try:
-                        # Получаем связанный объект
-                        related_obj = getattr(row, f.lower())  # или другой способ получения объекта
-                        if related_obj:
-                            display_val = relation_map[f](related_obj)
-                            items.append(QStandardItem(str(display_val)))
-                            continue
-                    except Exception as e:
-                        print(f"Ошибка при обработке связанного поля {f}: {str(e)}")
-"""
                 # Обычное поле
                 items.append(QStandardItem(str(val)))
 
@@ -1067,7 +1051,8 @@ class MainWindow(QMainWindow):
 
         table = QTableView()
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
-        table.setModel(model)
+        table.setModel(proxy)
+        table.setColumnHidden(0, True)
         table.sortByColumn(0, Qt.AscendingOrder)
         table.setSortingEnabled(True)
         table.setSelectionBehavior(QTableView.SelectRows)
@@ -1076,7 +1061,91 @@ class MainWindow(QMainWindow):
         #table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setSelectionMode(QAbstractItemView.MultiSelection)
 
-        
+
+        if title == "Лекарства":
+            # Добавляем кнопку фильтрации
+            filter_button = QPushButton("Фильтры")
+            vbox.addWidget(filter_button)
+            
+            # Создаем диалог фильтрации
+            def show_filter_dialog():
+                dialog = QDialog(self)
+                dialog.setWindowTitle("Фильтры лекарств")
+                layout = QVBoxLayout()
+                
+                # Фильтр по категории
+                category_label = QLabel("Категория:")
+                category_combo = QComboBox()
+                category_combo.addItem("Все категории", None)
+                
+                # Получаем уникальные категории из данных
+                categories = set()
+                for row in range(model.rowCount()):
+                    cat_item = model.item(row, fields.index('Category'))
+                    if cat_item:
+                        categories.add(cat_item.text())
+                
+                for cat in sorted(categories):
+                    category_combo.addItem(cat, cat)
+                
+                # Фильтр по поставщику
+                supplier_label = QLabel("Поставщик:")
+                supplier_combo = QComboBox()
+                supplier_combo.addItem("Все поставщики", None)
+                
+                # Получаем уникальных поставщиков из данных
+                suppliers = set()
+                for row in range(model.rowCount()):
+                    sup_item = model.item(row, fields.index('Supplier'))
+                    if sup_item:
+                        suppliers.add(sup_item.text())
+                
+                for sup in sorted(suppliers):
+                    supplier_combo.addItem(sup, sup)
+                
+                # Кнопки
+                btn_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+                btn_box.accepted.connect(dialog.accept)
+                btn_box.rejected.connect(dialog.reject)
+                
+                # Добавляем элементы в layout
+                layout.addWidget(category_label)
+                layout.addWidget(category_combo)
+                layout.addWidget(supplier_label)
+                layout.addWidget(supplier_combo)
+                layout.addWidget(btn_box)
+                
+                dialog.setLayout(layout)
+                
+                if dialog.exec_() == QDialog.Accepted:
+                    # Применяем фильтры
+                    category_filter = category_combo.currentData()
+                    supplier_filter = supplier_combo.currentData()
+                    
+                    # Сбрасываем предыдущие фильтры
+                    proxy.setFilterRegExp("")
+                    
+                    # Фильтрация по категории
+                    if category_filter:
+                        category_col = fields.index('Category')
+                        proxy.setFilterKeyColumn(category_col)
+                        proxy.setFilterFixedString(category_filter)
+                    
+                    # Фильтрация по поставщику
+                    if supplier_filter:
+                        supplier_col = fields.index('Supplier')
+                        proxy.setFilterKeyColumn(supplier_col)
+                        proxy.setFilterFixedString(supplier_filter)
+                else:
+                    # Сбрасываем фильтры
+                    proxy.setFilterRegExp("")
+            
+            filter_button.clicked.connect(show_filter_dialog)
+
+
+        if not is_admin and title == "Сотрудники":
+            table.setColumnHidden(5, True)
+            table.setColumnHidden(7, True)
         if not is_admin or is_employee:
             table.setEditTriggers(QTableView.NoEditTriggers)
 
@@ -1085,6 +1154,10 @@ class MainWindow(QMainWindow):
         # Поиск по кнопке — выделение подходящих строк
         def perform_search():
             search_text = search_input.text().lower()
+            if search_text == "":
+                self.refresh_current_tab()
+                return
+            
             table.clearSelection()
 
             if not search_text:
@@ -1112,6 +1185,10 @@ class MainWindow(QMainWindow):
             add_btn.setEnabled(False)
             del_btn.setEnabled(False)
             edit_btn.setEnabled(False)
+        if not is_admin and title == "Заказы":
+            del_btn.setEnabled(False)
+        if title == "Заказы":
+            edit_btn.setEnabled(False) 
         if title == "Поставки":
             edit_btn.setEnabled(False)
         if title == "Лекарства":
@@ -1188,7 +1265,6 @@ class MainWindow(QMainWindow):
         if not data:
             QMessageBox.warning(self, "Ошибка", "Не выбрана запись для редактирования")
             return
-
 
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Question)

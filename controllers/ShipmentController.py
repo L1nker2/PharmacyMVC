@@ -55,11 +55,12 @@ class ShipmentController:
             self.db.add(shipment_item)
 
         # Обновляем количество медикаментов на складе
-        for item in items:
-            med_id = item.get("id")
-            qty = item.get("Count", 0)
-            medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
-            medication.Count += qty
+        if shipment_data['Status']:
+            for item in items:
+                med_id = item.get("id")
+                qty = item.get("Count", 0)
+                medication = self.db.query(Medicine).filter(Medicine.id == med_id).first()
+                medication.Count += qty
 
         # Фиксируем все изменения в базе
         self.db.commit()
@@ -73,8 +74,10 @@ class ShipmentController:
     def update_shipment(self, shipment_id: int, update_data: dict) -> Type[Shipment] | None:
         """Обновляет данные поставки по ID. Возвращает обновленный объект или None."""
         shipment = self.db.get(Shipment, shipment_id)
+
         if not shipment:
             return None
+        
         for field, value in update_data.items():
             setattr(shipment, field, value)
         self.db.commit()

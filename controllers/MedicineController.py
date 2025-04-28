@@ -72,7 +72,7 @@ class MedicineController:
 
     def get_medicines_by_supplier(self, id):
         """Возвращает медикамент по ID поставщика или None, если не найден."""
-        medicine = self.db.query(Medicine).filter(Medicine.Supplier == id).first()
+        medicine = self.db.query(Medicine).filter(Medicine.Supplier == id).all()
         if medicine is None:
             self.db.commit()
             return None
