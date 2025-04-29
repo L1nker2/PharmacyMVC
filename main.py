@@ -1283,14 +1283,19 @@ class MainWindow(QMainWindow):
                 if title == "Сотрудники":
                     self.controllers['employee'].delete_employee(data[0])
                 elif title == "Лекарства":
-                    pass
-                    #self.controllers['medicine'].delete_medicine(data[0])
-                # Добавьте обработку для других вкладок
+                    self.controllers['medicine'].delete_medicine(data[0])
+                elif title == "Поставщики":
+                    self.controllers['supplier'].delete_supplier(data[0])
+                elif title == "Заказы":
+                    self.controllers['order'].delete_order(data[0])
+                elif title == "Поставки":
+                    self.controllers['shipment'].delete_shipment(data[0])
 
                 # Обновляем таблицу
                 self.refresh_current_tab()
                 QMessageBox.information(self, "Успех", "Запись успешно удалена")
             except Exception as e:
+                print(e)
                 QMessageBox.critical(self, "Ошибка", f"Не удалось удалить запись: {str(e)}")
 
 

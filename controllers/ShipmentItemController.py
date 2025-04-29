@@ -31,7 +31,7 @@ class ShipmentItemController:
 
     def delete_shipmentitem(self, item_id: int) -> Type[ShipmentItem] | None:
         """Удаляет ShipmentItem по ID. Возвращает удалённый объект или None."""
-        shipment_item = self.db.get(ShipmentItem, item_id)
+        shipment_item = self.db.query(ShipmentItem).filter(ShipmentItem.Shipment == item_id).first()
         if not shipment_item:
             return None
         self.db.delete(shipment_item)
