@@ -565,7 +565,7 @@ class ShipmentAddRecordDialog(QDialog):
 
             if checkbox.isChecked() and row < len(medicines):
                 med = medicines[row]
-                med_id = med.id
+                med_id = med[row].id
                 name = self.medicines_table.item(row, 1).text()
                 price = float(self.medicines_table.item(row, 3).text())
                 total = price * count
@@ -814,7 +814,7 @@ class MedicineAddRecordDialog(QDialog):
         form_layout.addRow("Поставщик:", self.supplier_combo)
 
         # Кнопка сохранения
-        self.save_btn = QPushButton("Сохранить сделку")
+        self.save_btn = QPushButton("Сохранить")
         self.save_btn.clicked.connect(self.save_medicine)
 
         layout.addLayout(form_layout)
@@ -840,6 +840,9 @@ class MedicineAddRecordDialog(QDialog):
             QMessageBox.warning(self, "Ошибка", str(e))
 
 #endregion
+
+
+
 
 
 # noinspection PyUnresolvedReferences

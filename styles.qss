@@ -31,7 +31,7 @@ QPushButton:pressed {
     padding-top: 14px;
 }
 QPushButton:disabled {
-    background:rgb(17, 28, 18);
+    background:rgb(120, 128, 122);
 }
 
 /* --------------------------
